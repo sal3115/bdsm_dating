@@ -1,0 +1,19 @@
+version: '3.3'
+
+services:
+  tgbot:
+    container_name: tg_bot_dating
+    build:
+      context: .
+    command: python bot.py
+    restart: always
+    networks:
+      - dating_bot
+    env_file:
+      - ".env"
+    volumes:
+      - .:/src
+
+networks:
+  dating_bot:
+    driver: bridge
