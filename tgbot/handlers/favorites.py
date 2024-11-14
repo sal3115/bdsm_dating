@@ -3,7 +3,7 @@ import logging
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 
-from tgbot.handlers.main_menu import scrolling_photo_func, view_questionnaires, first_page
+from tgbot.handlers.main_menu import scrolling_photo_func, view_questionnaires, first_page, no_moderation_user_answer
 from tgbot.keyboards.inline import favorite_profile_kb, interesting_cb, \
     dating_keyboard_favorites_cb, scrolling_photos_fav_cb, dating_keyboard, \
     scrolling_photos_inter_me_cb, dating_keyboard_interested_me_cb, dating_keyboard_mutual_interest_cb, \
@@ -276,7 +276,7 @@ async def processing_mutual_interest_keyboard(call:types.CallbackQuery, callback
 
 
 def favorites_handler(dp):
-    dp.register_message_handler(favourites_profile, text='❤️Избранное',is_user = True, is_paid = True)
+    dp.register_message_handler(favourites_profile, text='❤️Избранное',is_user = True, is_paid = True, check_user_in_moderation=True)
     dp.register_message_handler(favourites_profile_no_paid, text='❤️Избранное',is_user = True)
     dp.register_callback_query_handler(favorites_profile_cb, interesting_cb.filter())
     dp.register_callback_query_handler(processing_favourites_keyboard, dating_keyboard_favorites_cb.filter())

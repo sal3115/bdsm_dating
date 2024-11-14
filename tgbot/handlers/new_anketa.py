@@ -36,7 +36,6 @@ async def your_name(arg: Union[Message, CallbackQuery], state: FSMContext):
     logging.info( msg=[data, await state.get_state()])
 # ловим ответ про имя спрашиваем пол
 async def name_gender(message: Message, state: FSMContext):
-    print(f'------------------------- your_gender')
     text = text_dict['qw_6']
     kb = await func_kb_gender()
     if message.text == '🔙Вернуться НАЗАД':
@@ -51,7 +50,6 @@ async def name_gender(message: Message, state: FSMContext):
     logging.info( msg=[data, await state.get_state()])
 # ловим ответ про пол спрашиваем дату рождения
 async def gender_date_of_birth(arg: Union[Message, CallbackQuery], state: FSMContext):
-    print(f'------------------------- answer_6')
     if isinstance(arg, types.CallbackQuery):
         message = arg.message
     else:
@@ -73,7 +71,6 @@ async def gender_date_of_birth(arg: Union[Message, CallbackQuery], state: FSMCon
     logging.info( msg=[data, await state.get_state()])
 #ловим ответ про дату рождения запрос города
 async def birth_city(message: Message, state: FSMContext):
-    print(f'------------------------- answer_7')
     text = text_dict['qw_9']
     kb = await func_kb_back_2()
     check_date = await date_formats(message.text)
@@ -114,14 +111,13 @@ async def city_position(message: Message, state: FSMContext):
     logging.info( msg=[data, await state.get_state()])
 # ловим выбор позиции, задаем вопрос позицию партнера
 async def position_partner_position(arg: Union[Message, CallbackQuery], state: FSMContext):
-    print(f'------------------------- answer_10')
     text = text_dict['qw_11'] # кого вы ищите
     kb = await func_kb_back_2()
     if isinstance(arg, types.CallbackQuery): # если нажали кнопку
         message = arg.message
         your_position = arg.data
         await state.update_data(your_position=your_position)
-        # await message.edit_reply_markup()
+        await arg.message.edit_text(text=your_position, reply_markup=None)
         kb = await func_kb_position( message, your_position=your_position)
         await message.answer(text=text, reply_markup=kb)
         await FSM_hello.partner_position.set()
@@ -131,10 +127,8 @@ async def position_partner_position(arg: Union[Message, CallbackQuery], state: F
             message = arg
             await message.answer(text=text, reply_markup=kb)
             await FSM_hello.partner_position.set()
-        elif await state.get_state() == 'FSM_hello:partner_position':
-            await arg.delete()
         else:
-            await arg.answer(text=text, reply_markup=kb)
+            await arg.delete()
     data = await state.get_data()
     logging.info( msg=[data, await state.get_state()])
 # ловим позицию партнера, практики
@@ -144,6 +138,7 @@ async def partner_position_practice(arg: Union[Message, CallbackQuery], state: F
     if isinstance( arg, types.CallbackQuery ):  # если нажали кнопку
         message = arg.message
         partner_position = arg.data
+        await arg.message.edit_text(text=partner_position, reply_markup=None)
         await state.update_data( partner_position=partner_position )
         await message.answer( text=text, reply_markup=kb )
         await FSM_hello.your_practice.set()
@@ -153,10 +148,8 @@ async def partner_position_practice(arg: Union[Message, CallbackQuery], state: F
             message = arg
             await message.answer( text=text, reply_markup=kb )
             await FSM_hello.your_practice.set()
-        elif await state.get_state() == 'FSM_hello:your_practice':
-            await arg.delete()
         else:
-            await arg.answer( text=text, reply_markup=kb )
+            await arg.delete()
     data = await state.get_data()
     logging.info( msg=[data, await state.get_state()] )
 # ловим практики просим табу
@@ -189,7 +182,6 @@ async def tabu_about_me(message: Message, state: FSMContext):
     logging.info( msg=[data, await state.get_state()])
 # ловим обо мне просим загрузить фото
 async def about_me_photo(message: Message, state: FSMContext):
-    print(f'------------------------- answer_12')
     text = text_dict['qw_14']
     kb = await func_kb_back_2( button_next=True )
     if message.text == '🔙Вернуться НАЗАД':
@@ -204,7 +196,6 @@ async def about_me_photo(message: Message, state: FSMContext):
     logging.info( msg=[data, await state.get_state()])
 # ловим фото и спрашиваем мин возраст
 async def photo_min_age(message: Message, state:FSMContext, album: List[types.Message]=None):
-    print( 'func', 'answer_13' )
     text = text_dict['qw_20']
     kb = await func_kb_back_2()
     if message.photo:
@@ -229,7 +220,6 @@ async def photo_min_age(message: Message, state:FSMContext, album: List[types.Me
     logging.info( msg=[data, await state.get_state()] )
 #принимаем Минимальный подходящий возраст спашиваем максимальный подходящий возраст
 async def min_age_max_age(message: Message, state:FSMContext):
-    print( 'func', 'answer_20' )
     text = text_dict['qw_21']
     kb = await func_kb_back_2()
     if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
@@ -276,7 +266,6 @@ async def max_age_another_city(message: Message, state:FSMContext):
 #принимаем максимальный подходящий возраст  завершающий этап
 async def another_city_finish(message: Union[types.Message, types.CallbackQuery], state:FSMContext,
                               callback_data: dict = None, album: List[types.Message]= None):
-    print( 'func', 'answer_21' )
     text = text_dict['qw_22']
     if isinstance(message, types.Message):
         if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
@@ -340,7 +329,6 @@ async def back_button(message: Message, state: FSMContext):
         message,
         state = state
     )
-    print(curent_state)
 
 
 # async def next_button(message: Message, state: FSMContext):

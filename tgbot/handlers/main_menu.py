@@ -139,9 +139,9 @@ async def processing_dating_keyboard(call:types.CallbackQuery, callback_data:dic
     elif callback == 'more_photos':
         await scrolling_photo_func(call=call, user_id_anket=user_id_anket, page=page)
     elif callback == 'interesting':
-        first_photo = await select_photo(session=session_maker, user_id=user_id)
-        if len(first_photo) < 1:
-            await call.answer('Добавьте фото')
+        check_moderation = await select_user(session=session_maker, user_id=user_id)
+        if check_moderation[0]['moderation'] == False:
+            await call.answer('Вы не прошли модерацию, пожалуйста ждите.')
             return
         else:
             check_mutual_like = await select_check_mutual_interest(session=session_maker, user_id=user_id, partner_id=user_id_anket)
@@ -169,9 +169,9 @@ async def processing_dating_keyboard(call:types.CallbackQuery, callback_data:dic
                 except:
                     pass
     elif callback == 'dont_show':
-        first_photo = await select_photo( session=session_maker, user_id=user_id )
-        if len( first_photo ) < 1:
-            await call.answer( 'Добавьте фото' )
+        check_moderation = await select_user( session=session_maker, user_id=user_id )
+        if check_moderation[0]['moderation'] == False:
+            await call.answer( 'Вы не прошли модерацию, пожалуйста ждите.' )
             return
         else:
             await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=False )
@@ -222,10 +222,13 @@ async def support_func(message:types.Message):
     text = text_main_menu['support']
     await message.answer(text=text)
 
-
+async def no_moderation_user_answer(message:types.Message):
+    text = 'Вы не прошли модерацию, пожалуйста подождите'
+    await edit_message(message=message, text=text)
 
 def main_menu_handler(dp:Dispatcher):
-    dp.register_message_handler(view_questionnaires, text='👀Смотреть анкеты',is_user = True)
+    dp.register_message_handler(view_questionnaires, text='👀Смотреть анкеты',is_user = True, check_user_in_moderation=True)
+    dp.register_message_handler(no_moderation_user_answer, text='👀Смотреть анкеты',is_user = True)
 
 
     dp.register_message_handler(first_page, commands='start' ,is_user = True )

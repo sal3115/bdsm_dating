@@ -129,3 +129,24 @@ class CheckPaid(BoundFilter):
                 await delete_paid(session=session_maker, user_id=user_id)
         else:
             return False == self.is_paid
+
+
+
+
+class CheckUserModeration(BoundFilter):
+    key = 'check_user_in_moderation'
+
+    def __init__(self, check_user_in_moderation: typing.Optional[bool] = None):
+        self.check_user_in_moderation = check_user_in_moderation
+
+    async def check(self, obj):
+        if self.check_user_in_moderation is None:
+            return False
+        session_maker = obj.bot.get('session_maker')
+        user_id = obj.from_user.id
+        check_user_id = await select_user(session_maker, user_id)
+        if len(check_user_id) > 0:
+            if check_user_id[0]['moderation'] == True:
+                return user_id == check_user_id[0]['user_id']
+        else:
+            return False == self.check_user_in_moderation

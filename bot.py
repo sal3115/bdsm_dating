@@ -8,7 +8,7 @@ from aiogram.contrib.fsm_storage.redis import RedisStorage2
 from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter
 from tgbot.filters.check_user import CheckUserRole, CheckModerator, CheckAdmin, CheckUserDelete, CheckUserExit, \
-    CheckPaid
+    CheckPaid, CheckUserModeration
 from tgbot.handlers.administration import administrator_handler
 from tgbot.handlers.edit_profile import register_edit_profile
 from tgbot.handlers.exit_profile import exit_profile_handler
@@ -44,6 +44,7 @@ def register_all_filters(dp):
     dp.filters_factory.bind(CheckModerator)
     dp.filters_factory.bind(AdminFilter)
     dp.filters_factory.bind(CheckPaid)
+    dp.filters_factory.bind(CheckUserModeration)
 
 
 def register_all_handlers(dp):
