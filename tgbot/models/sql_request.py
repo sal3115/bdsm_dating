@@ -154,8 +154,7 @@ async def select_user_anketa(session, user_id):
             max_birthday = today - datetime.timedelta( days=(365 * min_age + 1) )
 
             request = select(
-                Users.user_id, Users.first_name, Users.username, Users.birthday, Users.city,
-                 Users.last_time
+                *[col for col in Users.__table__.c]
             ).filter(
                 Users.user_id != user_id,
                 ~Users.user_id.in_(
@@ -209,12 +208,6 @@ async def select_user_profile_like(session, user_id):
 
 
 async def select_user_profile_like_me(session, user_id):
-    photo_subquery = (
-        select(PhotoTable.id_user)
-        .filter(and_(PhotoTable.id_user == Users.user_id, PhotoTable.is_first_photo == True))
-        .limit(1)
-    )
-
     liked_users_subquery = (
         select(LikeDislikeTable.id_user)
         .where(and_(
@@ -237,8 +230,6 @@ async def select_user_profile_like_me(session, user_id):
         Users.user_id.in_(liked_users_subquery),  # Exclude users who have liked the current user
         ~Users.user_id.in_(reacted_users_subquery)  # Exclude users to whom the current user has reacted
     )
-
-    request = request.where(Users.user_id.in_(photo_subquery))
 
     with session() as ses:
         with ses.begin():
@@ -321,6 +312,20 @@ async def select_check_mutual_interest(session, user_id, partner_id):
             answer = ses.execute( request )
             answer2 = [dict( r._mapping ) for r in answer.fetchall()]
             return answer2
+
+
+async def select_check_interest(session, user_id, partner_id):
+    request = select(LikeDislikeTable.id_user).where(
+        and_(LikeDislikeTable.id_user == user_id, LikeDislikeTable.id_partner==partner_id),
+    ).where(or_(LikeDislikeTable.reaktion == True,
+                LikeDislikeTable.reaktion == False
+                ) )
+    with session() as ses:
+        with ses.begin():
+            answer = ses.execute( request )
+            answer2 = [dict( r._mapping ) for r in answer.fetchall()]
+            return answer2
+
 async def select_column_data(*args, session, user_id):
     users_table = Users.__table__
     columns = [getattr(users_table.c, column_name) for column_name in args]

@@ -94,8 +94,6 @@ async def delete_keyboard(message: Union[types.Message, types.CallbackQuery], cu
 async def edit_message(message: Union[types.Message, types.CallbackQuery], text=None, markup=None, photo=None, video=None):
     if isinstance(message, types.CallbackQuery):
         message = message.message
-    #TODO мы сохраняли меседж который пришел, а надо тот которыый отправляет т.е на каждый меседж.ансвер присваиваем
-    # одну переменую и с нее сохраняем плюс попробывать сохранять только если был маркап
     if photo:
         # если есть фото, изменяем сообщение с фото
         media = InputMedia(media=photo)
@@ -105,6 +103,8 @@ async def edit_message(message: Union[types.Message, types.CallbackQuery], text=
                 message_callback = await message.edit_caption( caption=text, reply_markup=markup)
             except MessageCantBeEdited:
                 message_callback = await message.answer_photo(photo=photo, caption=text, reply_markup=markup)
+            except BadRequest:
+                message_callback = await message.answer_photo( photo=photo, caption=text, reply_markup=markup )
         else:
             await message.delete()
             message_callback = await message.answer_photo(photo=photo,caption=text, reply_markup=markup)
@@ -197,6 +197,7 @@ async def add_user_func(data):
 
 async def format_text_profile(anket, session, type_profile=None, reward=None, return_reward=False):
     user_id_anket = anket['user_id']
+    id_anket = anket['id']
     name = anket['first_name']
     age = calculateAge( anket['birthday'] )
     city = anket['city']
@@ -205,21 +206,20 @@ async def format_text_profile(anket, session, type_profile=None, reward=None, re
     moderation = user_info[0]['moderation']
     text=''
     if type_profile =='favorites_profile':
-        text = f'Вы смотрите анкеты понравившиеся вам\n\n'
+        text = f'ПОНРАВИЛИСЬ ВАМ\n\n'
     elif type_profile == 'interested_me':
-        text = f'Вы смотрите анкеты которым понравились вы\n\n'
+        text = f'ПОНРАВИЛИСЬ ВЫ\n\n'
     elif type_profile == 'mutual_interest':
-        text = f'Вы смотрите анкеты взаимного интереса\n\n'
+        text = f'ВЗАИМНЫЙ ИНТЕРЕС\n\n'
     elif type_profile == 'not_interested_me':
-        text = f'Вы смотрите анкеты не понравившиеся вам\n\n'
-    if moderation == True:
-        text += f'✅'
-    # если нет награды в БД
-    text += f'{name}, {age}\n'
-    text += f' {city}\n'
+        text = f'НЕ ПОНРАВИЛИСЬ ВАМ\n\n'
+    text += f'Имя: {name}\n'
+    text += f'Возраст: {age}\n'
+    text += f'Город: {city}\n'
     correct_date = last_time.strftime("%d-%m-%Y")
-    text += f'Дата последнего посещения: {correct_date}'
-    text += f'\n\nНомер анкеты: {user_id_anket}'
+    text += f'Дата посещения: {correct_date}'
+    text += f'\n\nНомер анкеты: {id_anket}'
+
     return text, user_id_anket
 
 

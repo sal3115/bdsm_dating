@@ -4,15 +4,15 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 async def main_menu_kb(status_user=None):
     kb = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     if status_user is None:
-        kb.insert(KeyboardButton(text='👀Смотреть анкеты'))
-        kb.insert(KeyboardButton(text='❤️Избранное'))
-        kb.insert(KeyboardButton(text='📜Моя анкета'))
+        kb.add(KeyboardButton(text='Анкеты'))
+        kb.insert(KeyboardButton(text='Лайки'))
+        kb.insert(KeyboardButton(text='Изменить анкету'))
     if status_user is None or status_user == 'block_user':
-        kb.insert(KeyboardButton(text='🛠Тех. поддержка'))
+        kb.insert(KeyboardButton(text='Оформить подписку'))
     if status_user == 'delete_user' or status_user == 'exit_user':
         kb.insert(KeyboardButton(text='Восстановить аккаунт'))
     else:
-        kb.insert(KeyboardButton(text='❌Выйти из сервиса'))
+        kb.insert(KeyboardButton(text='Скрыть/показать анкету'))
     return kb
 
 

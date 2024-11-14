@@ -13,7 +13,7 @@ from tgbot.keyboards.reply import main_menu_kb
 from tgbot.misc.states import ComplaintsUser
 from tgbot.models.sql_request import select_user_anketa, select_photo, insert_like_dis, select_user, \
     select_user_profile_like, select_user_profile_like_me, select_user_profile_mutual_interest, select_first_photo, \
-    insert_complaints, select_user_profile_not_interest, select_check_mutual_interest
+    insert_complaints, select_user_profile_not_interest, select_check_mutual_interest, select_check_interest
 from tgbot.services.auxiliary_functions import edit_message, profile_viewer, format_text_profile
 from tgbot.services.calculate_age import calculateAge
 from tgbot.services.photo_and_text import text_dict, text_main_menu
@@ -144,38 +144,46 @@ async def processing_dating_keyboard(call:types.CallbackQuery, callback_data:dic
             await call.answer('Вы не прошли модерацию, пожалуйста ждите.')
             return
         else:
-            check_mutual_like = await select_check_mutual_interest(session=session_maker, user_id=user_id, partner_id=user_id_anket)
-            logging.info(check_mutual_like)
-            if len(check_mutual_like) > 0:
-                user_name = user_anket[0]['username']
-                user_link = f'https://t.me/{user_name}'
-                kb = await dating_keyboard( user_id=user_id_anket, page=page, call_back=callback, url=user_link )
-                await call.message.edit_reply_markup(reply_markup=kb)
-                await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
-                await call.answer('У вас взаимный интерес')
-                try:
-                    text = 'Здравствуйте. Один из пользователей понравившийся вам проявил взаимный интерес⚡️. ' \
-                           'Зайдите в раздел «❤️Изранное», «Взаимный интерес» чтобы начать общение💌.'
-                    await call.bot.send_message( chat_id=user_id_anket, text=text )
-                except:
-                    pass
+            check_interest = await select_check_interest(session=session_maker, user_id=user_id, partner_id=user_id_anket)
+            if len(check_interest) == 0:
+                check_mutual_like = await select_check_mutual_interest(session=session_maker, user_id=user_id, partner_id=user_id_anket)
+                logging.info(check_mutual_like)
+                if len(check_mutual_like) > 0:
+                    user_name = user_anket[0]['username']
+                    user_link = f'https://t.me/{user_name}'
+                    kb = await dating_keyboard( user_id=user_id_anket, page=page, call_back=callback, url=user_link )
+                    await call.message.edit_reply_markup(reply_markup=kb)
+                    await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
+                    await call.answer('У вас взаимный интерес')
+                    try:
+                        text = 'Здравствуйте. Один из пользователей понравившийся вам проявил взаимный интерес⚡️. ' \
+                               'Зайдите в раздел «❤️Изранное», «Взаимный интерес» чтобы начать общение💌.'
+                        await call.bot.send_message( chat_id=user_id_anket, text=text )
+                    except:
+                        pass
+                else:
+                    await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
+                    await view_questionnaires( message=call, page=page + 1 )
+                    try:
+                        text = 'Здравствуйте. Одному из пользователей понравилась ваша анкета⚡️. Зайдите в раздел ' \
+                               '«❤️Изранное», «Интересуются мной» чтобы узнать кто это👀. '
+                        await call.bot.send_message( chat_id=user_id_anket, text=text )
+                    except:
+                        pass
             else:
-                await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
-                await view_questionnaires( message=call, page=page + 1 )
-                try:
-                    text = 'Здравствуйте. Одному из пользователей понравилась ваша анкета⚡️. Зайдите в раздел ' \
-                           '«❤️Изранное», «Интересуются мной» чтобы узнать кто это👀. '
-                    await call.bot.send_message( chat_id=user_id_anket, text=text )
-                except:
-                    pass
+                await call.message.delete()
     elif callback == 'dont_show':
-        check_moderation = await select_user( session=session_maker, user_id=user_id )
-        if check_moderation[0]['moderation'] == False:
-            await call.answer( 'Вы не прошли модерацию, пожалуйста ждите.' )
-            return
+        check_interest = await select_check_interest( session=session_maker, user_id=user_id, partner_id=user_id_anket )
+        if len( check_interest ) == 0:
+            check_moderation = await select_user( session=session_maker, user_id=user_id )
+            if check_moderation[0]['moderation'] == False:
+                await call.answer( 'Вы не прошли модерацию, пожалуйста ждите.' )
+                return
+            else:
+                await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=False )
+                await view_questionnaires( message=call, page=page + 1 )
         else:
-            await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=False )
-            await view_questionnaires( message=call, page=page + 1 )
+            await call.message.delete()
     elif callback == 'complain':
         text = 'Напишите свою жалобу'
         kb = await cancel_inline_kb()
@@ -227,8 +235,8 @@ async def no_moderation_user_answer(message:types.Message):
     await edit_message(message=message, text=text)
 
 def main_menu_handler(dp:Dispatcher):
-    dp.register_message_handler(view_questionnaires, text='👀Смотреть анкеты',is_user = True, check_user_in_moderation=True)
-    dp.register_message_handler(no_moderation_user_answer, text='👀Смотреть анкеты',is_user = True)
+    dp.register_message_handler(view_questionnaires, text='Анкеты',is_user = True, check_user_in_moderation=True)
+    dp.register_message_handler(no_moderation_user_answer, text='Анкеты',is_user = True)
 
 
     dp.register_message_handler(first_page, commands='start' ,is_user = True )
@@ -241,9 +249,7 @@ def main_menu_handler(dp:Dispatcher):
     dp.register_callback_query_handler(processing_dating_keyboard, dating_keyboard_cb.filter())
     # dp.register_message_handler(blocking_messages, content_types=types.ContentType.ANY)
     #Ловим нажатие на кнопку Полезные советы
-    dp.register_message_handler(useful_tips, text='💡Полезные советы',is_user = True)
     dp.register_message_handler(support_func, text='🛠Тех. поддержка',is_user = True)
 
-    dp.register_message_handler( useful_tips, text='💡Полезные советы', is_user_exit=True )
     dp.register_message_handler( support_func, text='🛠Тех. поддержка', is_user_exit=True )
 

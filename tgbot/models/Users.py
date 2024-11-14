@@ -1,4 +1,4 @@
-from sqlalchemy import Column, BigInteger, String, Integer, Boolean, ForeignKey, Date, inspect, Float
+from sqlalchemy import Column, BigInteger, String, Integer, Boolean, ForeignKey, Date, inspect, Float, Sequence
 
 import json
 
@@ -7,7 +7,7 @@ from tgbot.models.Base_model import Base
 
 class Users(Base):
     __tablename__ = 'Users'
-
+    id = Column(BigInteger, Sequence('id'), nullable=False)
     user_id = Column(BigInteger, primary_key=True)
     status = Column(String, ForeignKey("status_user.title_status"))
     first_name = Column(String)

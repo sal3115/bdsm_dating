@@ -12,6 +12,6 @@ if __name__ == '__main__':
 
     session = get_session_maker( engine )
     for k in range(10):
-        users['user_id'] = users['user_id'] + k+1
+        users['user_id'] = users['user_id'] + k
         print(users['user_id'] )
         lll = loop.run_until_complete( insert_users( session=session, params = users ) )

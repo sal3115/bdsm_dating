@@ -17,7 +17,7 @@ from tgbot.services.auxiliary_functions import edit_message
 
 async def favourites_profile_no_paid(message: types.Message):
     text = 'Для просмотра данного раздела оформите подписку'
-    await message.answer(text=text)
+    await edit_message(message=message, text=text)
 
 async def favourites_profile(message:types.Message, last_message_id=None):
     text = '''На данной странице вы можете посмотреть:
@@ -53,7 +53,7 @@ async def favorites_profile_cb(call: types.CallbackQuery, callback_data:dict):
 
     if callback == 'liked_them':
         await view_questionnaires(message=call, type_profile='favorites_profile')
-    elif callback == 'Interested_me':
+    elif callback == 'interested_me':
         await view_questionnaires(message=call, type_profile='interested_me')
     elif callback == 'mutual_interest':
         await view_questionnaires(message=call, type_profile='mutual_interest')
@@ -276,8 +276,8 @@ async def processing_mutual_interest_keyboard(call:types.CallbackQuery, callback
 
 
 def favorites_handler(dp):
-    dp.register_message_handler(favourites_profile, text='❤️Избранное',is_user = True, is_paid = True, check_user_in_moderation=True)
-    dp.register_message_handler(favourites_profile_no_paid, text='❤️Избранное',is_user = True)
+    dp.register_message_handler(favourites_profile, text='Лайки',is_user = True, is_paid = True, check_user_in_moderation=True)
+    dp.register_message_handler(favourites_profile_no_paid, text='Лайки',is_user = True)
     dp.register_callback_query_handler(favorites_profile_cb, interesting_cb.filter())
     dp.register_callback_query_handler(processing_favourites_keyboard, dating_keyboard_favorites_cb.filter())
     dp.register_callback_query_handler(scrolling_photo_favorites_cb, scrolling_photos_fav_cb.filter())

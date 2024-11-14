@@ -310,7 +310,7 @@ async def favorite_profile_kb(user_id, page):
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(InlineKeyboardButton(text='Понравились мне', callback_data=interesting_cb.new(callback='liked_them', user_id=user_id, page=page)))
     markup.add(InlineKeyboardButton(text='Не понравились мне', callback_data=interesting_cb.new(callback='not_interested_me', user_id=user_id, page=page)))
-    markup.add(InlineKeyboardButton(text='Интересуются мной', callback_data=interesting_cb.new(callback='Interested_me', user_id=user_id, page=page)))
+    markup.add(InlineKeyboardButton(text='Интересуются мной', callback_data=interesting_cb.new(callback='interested_me', user_id=user_id, page=page)))
     markup.add(InlineKeyboardButton(text='Взаимный интерес', callback_data=interesting_cb.new(callback='mutual_interest', user_id=user_id, page=page)))
     markup.add(InlineKeyboardButton(text='Назад', callback_data=interesting_cb.new(callback='back', user_id=user_id, page=page)))
     return markup
@@ -624,19 +624,12 @@ async def exit_profile_kb(user_id, status_user=None):
     markup = InlineKeyboardMarkup( row_width=1 )
     if status_user == 'user':
         markup.insert(
-            InlineKeyboardButton( text='Скрыть анкету на время',
+            InlineKeyboardButton( text='Скрыть анкету',
                                   callback_data=exit_profile_cd.new( callback='hide_profile', user_id=user_id ) ) )
     elif status_user == 'hidden_user':
         markup.insert(
             InlineKeyboardButton(text='Сделать видимой',
                                  callback_data=exit_profile_cd.new(callback='make_visible', user_id=user_id)))
-
-    markup.insert(
-        InlineKeyboardButton( text='Удалить анкету',
-                              callback_data=exit_profile_cd.new( callback='delete_profile', user_id=user_id ) ) )
-    markup.insert(
-        InlineKeyboardButton( text='Выйти из сервиса',
-                              callback_data=exit_profile_cd.new( callback='exit_profile', user_id=user_id ) ) )
     return markup
 
 

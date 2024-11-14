@@ -401,7 +401,7 @@ async def my_profile_callback(call:types.CallbackQuery, callback_data:dict):
 
 
 def main_profile_handler(dp:Dispatcher):
-    dp.register_message_handler(my_profile, text='📜Моя анкета',is_user = True)
+    dp.register_message_handler(my_profile, text='Изменить анкету',is_user = True)
     # dp.register_message_handler(my_profile_plug, text='Моя анкета')
     dp.register_callback_query_handler(my_profile_callback, my_profile_cd.filter())
 
