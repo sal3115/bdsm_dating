@@ -4,14 +4,14 @@ from typing import Union
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 
-from tgbot.handlers.moderation import verification, complaints_moderation, reward_id, return_reward_id, cancel_func, \
-    different_link_mod, mailing_users, mailing_kb_func, search_user_id_telegram, search_user_id_telegram_func, \
+from tgbot.handlers.moderation import verification, complaints_moderation, reward_id, cancel_func, \
+     mailing_users, mailing_kb_func, search_user_id_telegram, search_user_id_telegram_func, \
     no_verification
 from tgbot.keyboards.inline import cancel_reward_cd, cancel_inline_kb, appoint_moderator_confirm_kb, \
     appoint_moderator_confirm_cd, cancel_cd, cancel_return_reward_cd
 from tgbot.keyboards.reply import moderation_main_menu_kb
 from tgbot.misc.states import RewardUser, AppointRemoveModerator, UserModeraion
-from tgbot.models.sql_request import insert_user_awards, delete_reward, select_user, update_user_info, \
+from tgbot.models.sql_request import  select_user, update_user_info, \
     download_database, select_first_photo
 from tgbot.services.auxiliary_functions import edit_message, format_text_profile
 
@@ -22,37 +22,37 @@ async def admin_menu(message:Union[types.Message, types.CallbackQuery]):
     await edit_message( message=message, text=text, markup=kb )
 
 
-async def reward_complete(call:types.CallbackQuery, callback_data:dict=None,state:FSMContext=None):
-    callback = callback_data['callback']
-    if callback == 'confirm':
-        data = await state.get_data()
-        id_user_reward = data['id_user_reward']
-        reward = data['self_reward']
-        session = call.bot.data['session_maker']
-        await insert_user_awards(session=session, user_id=id_user_reward, reward=reward)
-        await call.answer('Награда установлена')
-        await admin_menu(message=call)
-        await state.finish()
-    elif callback == 'wrong':
-        await call.answer('Награда отменена')
-        await state.finish()
-        await admin_menu(message=call)
+# async def reward_complete(call:types.CallbackQuery, callback_data:dict=None,state:FSMContext=None):
+#     callback = callback_data['callback']
+#     if callback == 'confirm':
+#         data = await state.get_data()
+#         id_user_reward = data['id_user_reward']
+#         reward = data['self_reward']
+#         session = call.bot.data['session_maker']
+#         await insert_user_awards(session=session, user_id=id_user_reward, reward=reward)
+#         await call.answer('Награда установлена')
+#         await admin_menu(message=call)
+#         await state.finish()
+#     elif callback == 'wrong':
+#         await call.answer('Награда отменена')
+#         await state.finish()
+#         await admin_menu(message=call)
 
-async def return_reward_complete(call:types.CallbackQuery, callback_data:dict=None,state:FSMContext=None):
-    callback = callback_data['callback']
-    if callback == 'confirm':
-        data = await state.get_data()
-        id_user_reward = data['id_user_reward']
-        reward = data['self_reward']
-        session = call.bot.data['session_maker']
-        await delete_reward(session=session, user_id=id_user_reward, reward=reward)
-        await call.answer('Награда удалена')
-        await admin_menu(message=call)
-        await state.finish()
-    elif callback == 'wrong':
-        await call.answer('Награда оставлена')
-        await state.finish()
-        await admin_menu(message=call)
+# async def return_reward_complete(call:types.CallbackQuery, callback_data:dict=None,state:FSMContext=None):
+#     callback = callback_data['callback']
+#     if callback == 'confirm':
+#         data = await state.get_data()
+#         id_user_reward = data['id_user_reward']
+#         reward = data['self_reward']
+#         session = call.bot.data['session_maker']
+#         await delete_reward(session=session, user_id=id_user_reward, reward=reward)
+#         await call.answer('Награда удалена')
+#         await admin_menu(message=call)
+#         await state.finish()
+#     elif callback == 'wrong':
+#         await call.answer('Награда оставлена')
+#         await state.finish()
+#         await admin_menu(message=call)
 
 #Назначить модератора
 async def appoint_moderator(message:types.Message):
@@ -169,12 +169,12 @@ def administrator_handler(dp:Dispatcher):
     dp.register_message_handler( complaints_moderation, text='Жалобы', is_admin=True )
     # # награды
     dp.register_message_handler( reward_id, text='Наградить', is_admin=True )
-    dp.register_callback_query_handler( reward_complete, cancel_reward_cd.filter(),
-                                        state=RewardUser.reward_confirm_state, is_admin=True )
+    # dp.register_callback_query_handler( reward_complete, cancel_reward_cd.filter(),
+    #                                     state=RewardUser.reward_confirm_state, is_admin=True )
     # забрать награду
-    dp.register_message_handler( return_reward_id, text='Забрать награду', is_admin=True )
-    dp.register_callback_query_handler( return_reward_complete, cancel_return_reward_cd.filter(),
-                                        state=RewardUser.return_reward_confirm_state, is_admin=True )
+    # dp.register_message_handler( return_reward_id, text='Забрать награду', is_admin=True )
+    # dp.register_callback_query_handler( return_reward_complete, cancel_return_reward_cd.filter(),
+    #                                     state=RewardUser.return_reward_confirm_state, is_admin=True )
     # Назначить модератора
     dp.register_message_handler(appoint_moderator,text='Назначить модератора', is_admin=True)
     dp.register_message_handler(appoint_moderator_confirm, state=AppointRemoveModerator.appoint_id_state)
@@ -191,7 +191,7 @@ def administrator_handler(dp:Dispatcher):
     dp.register_message_handler(download_db,text='Скачать БД', is_admin=True)
 
     #разные ссылки
-    dp.register_message_handler(different_link_mod, text='Разные ссылки', is_admin=True)
+    # dp.register_message_handler(different_link_mod, text='Разные ссылки', is_admin=True)
     #Рекомендации
     dp.register_message_handler(search_user_id_telegram, text='Поиск по ID телеграм', is_admin=True)
     dp.register_callback_query_handler( search_user_id_telegram_func, text='search_for_id', is_admin=True )

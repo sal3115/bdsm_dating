@@ -3,15 +3,15 @@ import datetime
 import logging
 
 import pandas as pd
-from sqlalchemy import select, and_, or_, not_, update, func, Table, inspect, create_engine
+from dateutil.relativedelta import relativedelta
+from sqlalchemy import select, and_, or_, not_, update, func, Table, inspect, create_engine, exc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased, Session
 
 from tgbot import config
 from tgbot.models.Base_model import Base
-from tgbot.models.Confessions import Confessions
-from tgbot.models.Users import Users, LikeDislikeTable, PhotoTable, ComplaintsTable, Reward_table, DifferentLinksTable, \
-    RejectingVerification, BlockUserDescription
+from tgbot.models.Users import Users, LikeDislikeTable, PhotoTable, ComplaintsTable, \
+    RejectingVerification, BlockUserDescription, PaidTable, PriceSubscription
 from tgbot.models.engine import create_engine_db, get_session_maker
 
 logging.basicConfig(
@@ -25,23 +25,12 @@ async def insert_users(session, params, value = None):
     user_id= params['user_id'],
     status = 'user',
     first_name =params['name'],
-    last_name = params['so_name'],
     username = params['user_name'],
-    phone_number = params['phone_number'],
-    e_mail = params['e_mail'],
     gender = params['gender'],
     birthday =params['birthday'],
-    country = params['country'],
-    town =params['town'],
-    confession =params['conf'],
-    church = params['church'],
-    guarantor =params['guarantor'],
-    social_network = params['social_network'],
-    video = params['video'],
+    city = params['city'],
     about_my_self = params['about_me'],
     partner_another_city =params['partner_another_city'],
-    partner_another_town = params['partner_another_town'],
-    partner_another_conf = params['partner_another_conf'],
     min_age = params['min_age'],
     max_age = params['max_age'],
     moderation = False,
@@ -82,32 +71,11 @@ async def insert_complaints(session, id_user, id_user_complaints, complaints, de
                 pass
 
 
-async def insert_conf(session, confession):
-    confes = Confessions(name=confession)
-    with session() as ses:
-        with ses.begin():
-            ses.add(confes)
-
-
 async def insert_photo(session, user_id, photo_id, unique_id = None ,is_first_photo=False):
     request_photo = PhotoTable(id_user=user_id, photo_id=photo_id, unique_id=unique_id ,is_first_photo=False)
     with session() as ses:
         with ses.begin():
             ses.add(request_photo)
-
-
-async def insert_user_awards(session, user_id, reward):
-    request = Reward_table(id_user=user_id, reward=reward, date_reward=datetime.datetime.now().date())
-    with session() as ses:
-        with ses.begin():
-            ses.add(request)
-
-
-async def insert_different_links(session,link, description):
-    request = DifferentLinksTable( link=link, description=description)
-    with session() as ses:
-        with ses.begin():
-            ses.add( request )
 
 
 async def insert_rejecting_verification(session,user_id, description):
@@ -122,6 +90,44 @@ async def insert_block_user_description(session,user_id, description):
     with session() as ses:
         with ses.begin():
             ses.add( request )
+
+class NumberOfDays(BaseException):
+    pass
+
+async def update_paid_subscription(session, user_id, number_of_days):
+    request = select( PaidTable.date_before ).where( PaidTable.user_id == user_id )
+    with session() as ses:
+        with ses.begin():
+            answer = ses.execute( request )
+            answer2 = [dict( r._mapping ) for r in answer.fetchall()]
+            date_subs = answer2[0]['date_before']
+            if int( number_of_days ) == 7:
+                date_before = date_subs + datetime.timedelta( 7 )
+            elif int( number_of_days ) == 30:
+                date_before = date_subs + relativedelta( months=+1 )
+            else:
+                raise NumberOfDays
+            stmt = update( PaidTable ).where( PaidTable.user_id == user_id ).values( date_before=date_before )
+            ses.execute( stmt )
+
+
+async def insert_paid_subscription(session,user_id, number_of_day):
+    today =  datetime.datetime.now().date()
+    if int( number_of_day ) == 7:
+        date_before = today + datetime.timedelta( 7 )
+    elif int( number_of_day ) == 30:
+        date_before = today + relativedelta( months=+1 )
+    else:
+        raise NumberOfDays
+    request = PaidTable( user_id=user_id, date_reg=today, date_before = date_before )
+    with session() as ses:
+        try:
+            with ses.begin():
+                ses.add( request )
+        except exc.IntegrityError:
+            await update_paid_subscription(session=session, user_id=user_id, number_of_days=number_of_day)
+
+
 
 async def select_all_users_mailing(session):
     request = select(Users.user_id).where(
@@ -140,23 +146,16 @@ async def select_user_anketa(session, user_id):
         with ses.begin():
             user = ses.query( Users ).filter( Users.user_id == user_id ).first()
             partner_another_city = user.partner_another_city
-            partner_another_town = user.partner_another_town
-            partner_another_conf = user.partner_another_conf
             min_age = user.min_age
             max_age = user.max_age
 
             today = datetime.datetime.today()
             min_birthday = today - datetime.timedelta( days=(365 * max_age) )
             max_birthday = today - datetime.timedelta( days=(365 * min_age + 1) )
-            photo_subquery = (
-                select( PhotoTable.id_user )
-                .filter( and_( PhotoTable.id_user == Users.user_id, PhotoTable.is_first_photo == True ) )
-                .limit( 1 )
-            )
 
             request = select(
-                Users.user_id, Users.first_name, Users.last_name, Users.username, Users.birthday, Users.country,
-                Users.town, Users.confession, Users.last_time, Users.awards
+                Users.user_id, Users.first_name, Users.username, Users.birthday, Users.city,
+                 Users.last_time
             ).filter(
                 Users.user_id != user_id,
                 ~Users.user_id.in_(
@@ -176,7 +175,7 @@ async def select_user_anketa(session, user_id):
             if not partner_another_city:
                 request = request.where(
                     and_(
-                        Users.town == user.town,
+                        Users.city == user.city,
                         or_(
                             Users.partner_another_city == False,
                             Users.partner_another_city == True
@@ -184,62 +183,18 @@ async def select_user_anketa(session, user_id):
                     )
                 )
 
-            if partner_another_town:
-                request = request.where(
-                    or_(
-                        Users.partner_another_town == True,
-                        and_(
-                            Users.partner_another_town == False,
-                            Users.country == user.country
-                        )
-                    )
-                )
-            if not partner_another_town:
-                request = request.where(
-                    and_(
-                        Users.country == user.country,
-                        or_(
-                            Users.partner_another_town == False,
-                            Users.partner_another_town == True
-                        )
-                    )
-                )
-
-            if partner_another_conf:
-                request = request.where(
-                    or_(
-                        Users.partner_another_conf == True,
-                        and_(
-                            Users.partner_another_conf == False,
-                            Users.confession == user.confession
-                        )
-                    )
-                )
-            if not partner_another_conf:
-                request = request.where(
-                    and_(
-                        Users.confession == user.confession,
-                        or_(
-                            Users.partner_another_conf == False,
-                            Users.partner_another_conf == True
-                        )
-                    )
-                )
-            request = request.where( Users.user_id.in_( photo_subquery ) )
             answer = ses.execute( request )
             answer2 = [dict( r._mapping ) for r in answer.fetchall()]
             return answer2
 
 
 async def select_user_profile_like(session, user_id):
-    request = select(
-        Users.user_id, Users.first_name, Users.last_name, Users.username, Users.birthday, Users.country,
-        Users.town, Users.confession, Users.last_time, Users.awards
+    request = select(*[col for col in Users.__table__.c]
     ).filter(
         Users.user_id != user_id,
         Users.user_id.in_( select( LikeDislikeTable.id_partner ).where( and_(
         LikeDislikeTable.id_user == user_id,
-        LikeDislikeTable.reaktion == 1
+        LikeDislikeTable.reaktion == True
     ) ) ),
         Users.gender != select( Users.gender ).where( Users.user_id == user_id )
     )
@@ -264,7 +219,7 @@ async def select_user_profile_like_me(session, user_id):
         select(LikeDislikeTable.id_user)
         .where(and_(
             LikeDislikeTable.id_partner == user_id,
-            LikeDislikeTable.reaktion == 1  # Assuming 1 is for like
+            LikeDislikeTable.reaktion == True  # Assuming 1 is for like
         ))
     )
 
@@ -276,9 +231,7 @@ async def select_user_profile_like_me(session, user_id):
         ))
     )
 
-    request = select(
-        Users.user_id, Users.first_name, Users.last_name, Users.username, Users.birthday, Users.country,
-        Users.town, Users.confession, Users.last_time, Users.awards
+    request = select(*[col for col in Users.__table__.c]
     ).filter(
         Users.user_id != user_id,
         Users.user_id.in_(liked_users_subquery),  # Exclude users who have liked the current user
@@ -320,14 +273,12 @@ async def select_user_profile_like_me(session, user_id):
 #             return answer2
 
 async def select_user_profile_not_interest(session, user_id):
-    request = select(
-        Users.user_id, Users.first_name, Users.last_name, Users.username, Users.birthday, Users.country,
-        Users.town, Users.confession, Users.last_time, Users.awards
+    request = select(*[col for col in Users.__table__.c]
     ).filter(
         Users.user_id != user_id,
         Users.user_id.in_( select( LikeDislikeTable.id_partner ).where( and_(
             LikeDislikeTable.id_user == user_id,
-            LikeDislikeTable.reaktion == 0
+            LikeDislikeTable.reaktion == False
         ) ) ),
         Users.gender != select( Users.gender ).where( Users.user_id == user_id )
     )
@@ -340,18 +291,16 @@ async def select_user_profile_not_interest(session, user_id):
 
 
 async def select_user_profile_mutual_interest(session, user_id):
-    request = select(
-        Users.user_id, Users.first_name, Users.last_name, Users.username, Users.birthday, Users.country,
-        Users.town, Users.confession, Users.last_time, Users.awards
+    request = select(*[col for col in Users.__table__.c]
     ).filter(
         and_(
             Users.user_id.in_(select(LikeDislikeTable.id_user).where(and_(
                 LikeDislikeTable.id_partner == user_id,
-                LikeDislikeTable.reaktion == 1
+                LikeDislikeTable.reaktion == True
             ))),
             Users.user_id.in_(select(LikeDislikeTable.id_partner).where(and_(
                 LikeDislikeTable.id_user == user_id,
-                LikeDislikeTable.reaktion == 1
+                LikeDislikeTable.reaktion == True
             ))),
             Users.gender != select(Users.gender).where(Users.user_id == user_id)
         )
@@ -366,7 +315,7 @@ async def select_user_profile_mutual_interest(session, user_id):
 async def select_check_mutual_interest(session, user_id, partner_id):
     request = select(LikeDislikeTable.id_user).where(
         and_(LikeDislikeTable.id_user == partner_id, LikeDislikeTable.id_partner==user_id),
-    ).where(LikeDislikeTable.reaktion == 1)
+    ).where(LikeDislikeTable.reaktion == True)
     with session() as ses:
         with ses.begin():
             answer = ses.execute( request )
@@ -418,12 +367,12 @@ async def select_user_anketa_verefication(session):
             return answer2
 
 
-async def get_Confessions(session):
-    request = select(Confessions.id , Confessions.name)
-    with session() as ses:
-        with ses.begin():
-            answer = ses.execute( request )
-            return answer.all()
+# async def get_Confessions(session):
+#     request = select(Confessions.id , Confessions.name)
+#     with session() as ses:
+#         with ses.begin():
+#             answer = ses.execute( request )
+#             return answer.all()
 
 
 async def select_photo(session, user_id):
@@ -498,32 +447,6 @@ async def select_complaints_join(session, user_id, complaints_user_id):
             return answer2
 
 
-async def select_reward(session, user_id):
-    request = select( Reward_table.reward ).where( Reward_table.id_user == user_id )
-    with session() as ses:
-        with ses.begin():
-            answer = ses.execute( request )
-            answer2 = [dict( r._mapping ) for r in answer.fetchall()]
-            return answer2
-
-
-async def select_different_links(session):
-    request = select(DifferentLinksTable.id,DifferentLinksTable.link, DifferentLinksTable.description)
-    with session() as ses:
-        with ses.begin():
-            answer = ses.execute(request)
-            answer2 = [dict(r._mapping) for r in answer.fetchall()]
-            return answer2
-
-
-async def select_different_links_first(session, id_link):
-    request = select(DifferentLinksTable.id,DifferentLinksTable.link, DifferentLinksTable.description).where(DifferentLinksTable.id==id_link)
-    with session() as ses:
-        with ses.begin():
-            answer = ses.execute(request)
-            answer2 = [dict(r._mapping) for r in answer.fetchall()]
-            return answer2
-
 #поиск юзеров по имени и фамилии пока не используется
 async def select_search_users(session, name=None, lastname=None, first_letter_lastname=None):
     query = select( Users.user_id,Users.first_name,Users.last_name )
@@ -569,6 +492,24 @@ async def select_block_user_description(session, user_id):
             answer2 = [dict( r._mapping ) for r in answer.fetchall()]
             return answer2
 
+async def select_paid(session, user_id):
+    request = select(*[col for col in PaidTable.__table__.c]).where( PaidTable.user_id == user_id )
+    with session() as ses:
+        with ses.begin():
+            answer = ses.execute( request)
+            answer2 = [dict( r._mapping ) for r in answer.fetchall()]
+            return answer2
+
+
+async def select_price_subscription(session):
+    request = select(*[col for col in PriceSubscription.__table__.c])
+    with session() as ses:
+        with ses.begin():
+            answer = ses.execute( request)
+            answer2 = [dict( r._mapping ) for r in answer.fetchall()]
+            return answer2
+
+
 async def update_first_photo(session, user_id, photo_id ,first_photo = True):
     stmt = update( PhotoTable ).where(and_(PhotoTable.id_user == user_id, PhotoTable.photo_id == photo_id)).values(
         is_first_photo=first_photo )
@@ -610,13 +551,6 @@ async def update_complaint_decision(session, complaint_user_id, **kwargs):
             ses.execute( stmt )
 
 
-async def update_different_link_or_description(session, id_link, **kwargs):
-    stmt = update( DifferentLinksTable ).where( DifferentLinksTable.id == id_link ).values( **kwargs )
-    with session() as ses:
-        with ses.begin():
-            ses.execute( stmt )
-
-
 
 import pandas as pd
 
@@ -642,19 +576,6 @@ async def delete_photo_in_table(session, user_id, unique_id):
             ses.query( PhotoTable ).filter_by( id_user=user_id, unique_id=unique_id ).delete()
 
 
-async def delete_reward(session, user_id, reward):
-    with session() as ses:
-        with ses.begin():
-            ses: Session
-            request = ses.query( Reward_table ).filter_by( id_user=user_id, reward=reward ).delete()
-
-
-async def delete_different_link(session, id_link):
-    with session() as ses:
-        with ses.begin():
-            ses: Session
-            request = ses.query( DifferentLinksTable ).filter_by( id = id_link).delete()
-
 async def delete_reaction(session, user_id, id_partner):
     with session() as ses:
         with ses.begin():
@@ -674,3 +595,11 @@ async def delete_block_user_description(session, user_id):
         with ses.begin():
             ses: Session
             request = ses.query( BlockUserDescription ).filter_by( user_id=user_id).delete()
+
+
+
+async def delete_paid(session, user_id):
+    with session() as ses:
+        with ses.begin():
+            ses: Session
+            request = ses.query( PaidTable ).filter_by( user_id=user_id).delete()

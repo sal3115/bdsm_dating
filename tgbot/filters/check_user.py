@@ -1,8 +1,10 @@
+import logging
 import typing
+from datetime import datetime
 
 from aiogram.dispatcher.filters import BoundFilter
 
-from tgbot.models.sql_request import select_user
+from tgbot.models.sql_request import select_user, select_paid, delete_paid
 
 
 class CheckUserRole(BoundFilter):
@@ -102,3 +104,28 @@ class CheckAdmin(BoundFilter):
                 return user_id == check_user_id[0]['user_id']
         else:
             return False == self.is_admin
+
+logging.basicConfig(
+        level=logging.INFO,
+        format=u'%(filename)s:%(lineno)d #%(levelname)-8s [%(asctime)s] - %(name)s - %(message)s',
+    )
+class CheckPaid(BoundFilter):
+    key = 'is_paid'
+    def __init__(self, is_paid: typing.Optional[bool] = None):
+        self.is_paid = is_paid
+    async def check(self, obj):
+        if self.is_paid is None:
+            return False
+        session_maker = obj.bot.get('session_maker')
+        user_id = obj.from_user.id
+        check_user_id = await select_paid(session_maker, user_id)
+        if len(check_user_id) > 0:
+            logging.info( f'len ----------- {check_user_id[0]}' )
+            today = datetime.now().date()
+            logging.info( f'today ----------- {type(today), today}' )
+            if check_user_id[0]['date_before'] >= datetime.now().date():
+                return user_id == check_user_id[0]['user_id']
+            else:
+                await delete_paid(session=session_maker, user_id=user_id)
+        else:
+            return False == self.is_paid

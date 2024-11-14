@@ -7,7 +7,7 @@ from aiogram import types
 from aiogram.types import InputMedia, InputMediaVideo
 from aiogram.utils.exceptions import MessageCantBeEdited, BadRequest, MessageToEditNotFound
 
-from tgbot.models.sql_request import select_reward, select_photo, select_user
+from tgbot.models.sql_request import select_photo, select_user
 from tgbot.services.calculate_age import calculateAge
 
 
@@ -47,46 +47,95 @@ async def delete_keyboard(message: Union[types.Message, types.CallbackQuery], cu
             pass
 
 
+# async def edit_message(message: Union[types.Message, types.CallbackQuery], text=None, markup=None, photo=None, video=None):
+#     if isinstance(message, types.CallbackQuery):
+#         message = message.message
+#     #TODO мы сохраняли меседж который пришел, а надо тот которыый отправляет т.е на каждый меседж.ансвер присваиваем
+#     # одну переменую и с нее сохраняем плюс попробывать сохранять только если был маркап
+#     if photo:
+#         # если есть фото, изменяем сообщение с фото
+#         media = InputMedia(media=photo)
+#         if message.photo:
+#             try:
+#                 await message.edit_media( media=media )
+#                 await message.edit_caption( caption=text, reply_markup=markup)
+#             except MessageCantBeEdited:
+#                 await message.answer_photo(photo=photo, caption=text, reply_markup=markup)
+#         else:
+#             await message.delete()
+#             await message.answer_photo(photo=photo,caption=text, reply_markup=markup)
+#     elif video:
+#         # если есть видео, изменяем сообщение с видео
+#         # await message.edit_caption( caption=text, reply_markup=markup  )
+#         await message.delete()
+#         # media = InputMediaVideo(media=video)
+#         await message.answer_video( video=video,caption=text ,reply_markup=markup)
+#     else:
+#         # если нет ни фото, ни видео, изменяем сообщение без медиа
+#         try:
+#             if (not message.video) and (not message.video_note):
+#                 await message.delete()
+#                 await message.answer( text=text, reply_markup=markup )
+#             else:
+#                 await message.delete()
+#                 await message.answer(text=text, reply_markup=markup)
+#         except MessageCantBeEdited:
+#             await message.answer(text=text, reply_markup=markup)
+#         except BadRequest:
+#             logging.info(text)
+#             try:
+#                 await message.edit_caption(caption=text, reply_markup=markup)
+#             except MessageToEditNotFound:
+#                 await message.delete()
+#                 await message.answer(text=text, reply_markup=markup)
+#     message.bot['last_message_id'] = message.message_id
+
+
 async def edit_message(message: Union[types.Message, types.CallbackQuery], text=None, markup=None, photo=None, video=None):
     if isinstance(message, types.CallbackQuery):
         message = message.message
-
+    #TODO мы сохраняли меседж который пришел, а надо тот которыый отправляет т.е на каждый меседж.ансвер присваиваем
+    # одну переменую и с нее сохраняем плюс попробывать сохранять только если был маркап
     if photo:
         # если есть фото, изменяем сообщение с фото
         media = InputMedia(media=photo)
         if message.photo:
             try:
                 await message.edit_media( media=media )
-                await message.edit_caption( caption=text, reply_markup=markup)
+                message_callback = await message.edit_caption( caption=text, reply_markup=markup)
             except MessageCantBeEdited:
-                await message.answer_photo(photo=photo, caption=text, reply_markup=markup)
+                message_callback = await message.answer_photo(photo=photo, caption=text, reply_markup=markup)
         else:
             await message.delete()
-            await message.answer_photo(photo=photo,caption=text, reply_markup=markup)
+            message_callback = await message.answer_photo(photo=photo,caption=text, reply_markup=markup)
     elif video:
         # если есть видео, изменяем сообщение с видео
         # await message.edit_caption( caption=text, reply_markup=markup  )
         await message.delete()
         # media = InputMediaVideo(media=video)
-        await message.answer_video( video=video,caption=text ,reply_markup=markup)
+        message_callback = await message.answer_video( video=video,caption=text ,reply_markup=markup)
     else:
         # если нет ни фото, ни видео, изменяем сообщение без медиа
         try:
             if (not message.video) and (not message.video_note):
                 await message.delete()
-                await message.answer( text=text, reply_markup=markup )
+                message_callback = await message.answer( text=text, reply_markup=markup )
             else:
                 await message.delete()
-                await message.answer(text=text, reply_markup=markup)
+                message_callback = await message.answer(text=text, reply_markup=markup)
         except MessageCantBeEdited:
-            await message.answer(text=text, reply_markup=markup)
+            message_callback = await message.answer(text=text, reply_markup=markup)
         except BadRequest:
             logging.info(text)
             try:
-                await message.edit_caption(caption=text, reply_markup=markup)
+                message_callback = await message.edit_caption(caption=text, reply_markup=markup)
             except MessageToEditNotFound:
                 await message.delete()
-                await message.answer(text=text, reply_markup=markup)
+                message_callback = await message.answer(text=text, reply_markup=markup)
+    if markup:
+        if 'inline_keyboard' in markup:
+            message.bot['last_message_id'] = message_callback.message_id
+
 
 async def profile_viewer(message:types.Message, text, photo=None, markup=None):
     if photo:
@@ -94,27 +143,29 @@ async def profile_viewer(message:types.Message, text, photo=None, markup=None):
         if message.photo:
             media = InputMedia(media=photo)
             await message.edit_media( media=media )
-            await message.edit_caption( caption=text, reply_markup=markup)
+            message_callback = await message.edit_caption( caption=text, reply_markup=markup)
         else:
             media = InputMedia(media=photo)
             await message.delete()
-            await message.answer_photo(photo=photo, caption=text, reply_markup=markup)
+            message_callback = await message.answer_photo(photo=photo, caption=text, reply_markup=markup)
     elif photo is None:
         if message.photo:
             await message.delete()
-            await message.answer(text=text, reply_markup=markup)
+            message_callback = await message.answer(text=text, reply_markup=markup)
         else:
             try:
-                await message.edit_text(text=text, reply_markup=markup)
+                message_callback = await message.edit_text(text=text, reply_markup=markup)
             except MessageCantBeEdited as e:
                 await message.delete()
-                await message.answer( text=text, reply_markup=markup )
+                message_callback = await message.answer( text=text, reply_markup=markup )
             except BadRequest as b:
                 await message.delete()
-                await message.answer( text=text, reply_markup=markup )
+                message_callback = await message.answer( text=text, reply_markup=markup )
     else:
         logging.info(msg='------------Else---------------')
-
+    if markup:
+        if markup.inline_keyboard:
+            message.bot['last_message_id'] = message_callback.message_id
 
 
 async def add_user_func(data):
@@ -148,12 +199,9 @@ async def format_text_profile(anket, session, type_profile=None, reward=None, re
     user_id_anket = anket['user_id']
     name = anket['first_name']
     age = calculateAge( anket['birthday'] )
-    coutry = anket['country']
-    city = anket['town']
-    confession = anket['confession']
+    city = anket['city']
     last_time = anket['last_time']
     user_info = await select_user(session=session, user_id=user_id_anket)
-    guarantor = user_info[0]['guarantor']
     moderation = user_info[0]['moderation']
     text=''
     if type_profile =='favorites_profile':
@@ -166,31 +214,9 @@ async def format_text_profile(anket, session, type_profile=None, reward=None, re
         text = f'Вы смотрите анкеты не понравившиеся вам\n\n'
     if moderation == True:
         text += f'✅'
-    if guarantor is not None:
-        text += f'📮'
-    reward_db = await select_reward(session=session, user_id=user_id_anket)
-    # ели есть награды в БД
-    if len(reward_db) > 0:
-        # удаление награды
-        if return_reward:
-            for rew in reward_db:
-                if rew['reward'] == reward:
-                    continue
-                else:
-                    text += f'{rew["reward"]}'
-        # добавление награды
-        else:
-            for rew in reward_db:
-                text += f'{rew["reward"]}'
-            if reward is not None:
-                text += f'{reward}'
-        text += '\n'
     # если нет награды в БД
-    elif reward is not None:
-        text += f'{reward}\n'
     text += f'{name}, {age}\n'
-    text += f'{coutry}, {city}\n'
-    text += f'{confession}\n'
+    text += f' {city}\n'
     correct_date = last_time.strftime("%d-%m-%Y")
     text += f'Дата последнего посещения: {correct_date}'
     text += f'\n\nНомер анкеты: {user_id_anket}'

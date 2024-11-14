@@ -15,15 +15,20 @@ from tgbot.models.sql_request import select_user_profile_like, select_photo, sel
 from tgbot.services.auxiliary_functions import edit_message
 
 
-async def favourites_profile(message:types.Message):
+async def favourites_profile_no_paid(message: types.Message):
+    text = 'Для просмотра данного раздела оформите подписку'
+    await message.answer(text=text)
+
+async def favourites_profile(message:types.Message, last_message_id=None):
     text = '''На данной странице вы можете посмотреть:
 Пользователей которые понравились вам - "Понравились мне"
 Пользователей которым понравились вы - "Интересуются мной"
 Пользователей которые понравились вам и понравились вы - "Взаимный интерес"    
     '''
+    logging.info(last_message_id)
     user_id = message.chat.id
     kb = await favorite_profile_kb(user_id=user_id, page=0)
-    await message.answer(text=text, reply_markup=kb)
+    await edit_message(message=message, text=text, markup=kb)
 
 
 async def scrolling_photo_favorites_cb(call: types.CallbackQuery, callback_data: dict):
@@ -45,6 +50,7 @@ async def favorites_profile_cb(call: types.CallbackQuery, callback_data:dict):
     user_id_anket = callback_data['user_id']
     page = int( callback_data['page'] )
     user_id = call.from_user.id
+
     if callback == 'liked_them':
         await view_questionnaires(message=call, type_profile='favorites_profile')
     elif callback == 'Interested_me':
@@ -270,7 +276,8 @@ async def processing_mutual_interest_keyboard(call:types.CallbackQuery, callback
 
 
 def favorites_handler(dp):
-    dp.register_message_handler(favourites_profile, text='❤️Избранное',is_user = True)
+    dp.register_message_handler(favourites_profile, text='❤️Избранное',is_user = True, is_paid = True)
+    dp.register_message_handler(favourites_profile_no_paid, text='❤️Избранное',is_user = True)
     dp.register_callback_query_handler(favorites_profile_cb, interesting_cb.filter())
     dp.register_callback_query_handler(processing_favourites_keyboard, dating_keyboard_favorites_cb.filter())
     dp.register_callback_query_handler(scrolling_photo_favorites_cb, scrolling_photos_fav_cb.filter())

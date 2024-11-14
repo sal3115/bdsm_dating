@@ -5,7 +5,7 @@ from aiogram import Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.types import Message, CallbackQuery, ContentType
 
-from tgbot.keyboards.inline import func_kb_back_2, func_kb_phone, func_kb_confessions, new_kb_back, yes_no_button, \
+from tgbot.keyboards.inline import func_kb_back_2, func_kb_phone, new_kb_back, yes_no_button, \
     yes_no_cb
 from tgbot.keyboards.reply import main_menu_kb
 from tgbot.misc.states import EditProfile
@@ -24,7 +24,7 @@ async def complete_edit(message:Message, state:FSMContext):
 async def first_edit_profile(message:Union[Message, CallbackQuery], state=FSMContext):
     logging.info(f'------------------------- first_edit_profile')
     kb = await new_kb_back(button_next=True)
-    text = text_dict['qw_3']
+    text = "Здесь ты можешь отредактировать свою анкету"
     await edit_message(message=message, text= text, markup=kb)
     await EditProfile.email_state.set()
 
@@ -108,7 +108,7 @@ async def edit_country(message:Message, state:FSMContext):
 async def edit_city(message:Message, state:FSMContext):
     logging.info( f'------------------------- editing city' )
     text = text_dict['qw_10']
-    kb = await func_kb_confessions( message )
+    kb = await yes_no_button( message )
     if message.text == '🔙Вернуться НАЗАД':
         await message.bot.edit_message_reply_markup( chat_id=message.chat.id, message_id=message.message_id - 1 )
         await message.answer( text=text, reply_markup=kb )

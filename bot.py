@@ -7,9 +7,9 @@ from aiogram.contrib.fsm_storage.redis import RedisStorage2
 
 from tgbot.config import load_config
 from tgbot.filters.admin import AdminFilter
-from tgbot.filters.check_user import CheckUserRole, CheckModerator, CheckAdmin, CheckUserDelete, CheckUserExit
+from tgbot.filters.check_user import CheckUserRole, CheckModerator, CheckAdmin, CheckUserDelete, CheckUserExit, \
+    CheckPaid
 from tgbot.handlers.administration import administrator_handler
-from tgbot.handlers.different_links import description_link_handler
 from tgbot.handlers.edit_profile import register_edit_profile
 from tgbot.handlers.exit_profile import exit_profile_handler
 from tgbot.handlers.favorites import favorites_handler
@@ -20,6 +20,8 @@ from tgbot.handlers.new_anketa import register_anketa
 from tgbot.handlers.other_handlers import outher_handler
 from tgbot.middlewares.album_med import AlbumMiddleware
 from tgbot.handlers.hello import register_hello
+from tgbot.middlewares.antiflood import ThrottlingMiddleware
+from tgbot.middlewares.edit_message import ReplaceOrDeleteLastMessageMiddleware
 from tgbot.middlewares.last_date_activ_day import DbMiddleware
 from tgbot.models.Base_model import Base
 from tgbot.models.engine import create_engine_db, get_session_maker, proceed_schemas
@@ -30,6 +32,8 @@ logger = logging.getLogger(__name__)
 def register_all_middlewares(dp):
     dp.setup_middleware(AlbumMiddleware())
     dp.setup_middleware(DbMiddleware())
+    dp.setup_middleware(ThrottlingMiddleware())
+    dp.setup_middleware(ReplaceOrDeleteLastMessageMiddleware())
 
 
 def register_all_filters(dp):
@@ -39,13 +43,13 @@ def register_all_filters(dp):
 
     dp.filters_factory.bind(CheckModerator)
     dp.filters_factory.bind(AdminFilter)
+    dp.filters_factory.bind(CheckPaid)
 
 
 def register_all_handlers(dp):
     administrator_handler(dp)
     moderator_handler(dp)
     main_menu_handler(dp)
-    description_link_handler(dp)
     exit_profile_handler(dp)
     favorites_handler(dp)
     main_profile_handler(dp)
@@ -65,7 +69,8 @@ async def main():
     storage = RedisStorage2() if config.tg_bot.use_redis else MemoryStorage()
     bot = Bot(token=config.tg_bot.token, parse_mode='HTML', disable_web_page_preview=True)
     dp = Dispatcher(bot, storage=storage)
-    engine = create_engine_db(config.db.host)
+    engine = create_engine_db(db_path=config.db.host,db_pass=config.db.db_pass , db_user=config.db.db_user,
+                              name_db=config.db.db_name)
     session_maker = get_session_maker(engine)
     proceed_schemas(Base.metadata,engine=engine)
     bot_info = await bot.get_me()

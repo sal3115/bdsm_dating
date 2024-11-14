@@ -19,9 +19,7 @@ from tgbot.misc.states import UserModeraion, RewardUser, EditLink, NewLink, Reco
     SearchUser, BlockUser, EditUserModeration
 from tgbot.models.sql_request import select_moderation_user_id, select_user, select_user_anketa_verefication, \
     select_first_photo, update_moderation, update_user_info, select_complaints, select_complaints_join, \
-    update_complaint_decision, select_column_data, select_user_anketa, insert_user_awards, delete_reward, \
-    select_different_links, select_different_links_first, update_different_link_or_description, insert_different_links, \
-    delete_different_link, select_all_users_mailing, select_reward, insert_rejecting_verification, \
+    update_complaint_decision, select_column_data, select_user_anketa, select_all_users_mailing, insert_rejecting_verification, \
     select_rejection_user, delete_rejecting_verification, insert_block_user_description, select_block_user_description, \
     delete_block_user_description
 from tgbot.services.auxiliary_functions import edit_message, format_text_profile
@@ -43,15 +41,9 @@ async def text_verify_user(user=None, user_id = None, session=None, type_profile
     correct_time_reg = time_reg.strftime( "%d-%m-%Y" )
     date_birthday = user['birthday']
     correct_date_birthday = date_birthday.strftime( "%d-%m-%Y" )
-    reward_db = await select_reward(session=session, user_id=user_id)
     rejection_verification = await select_rejection_user(session=session, user_id=user_id)
     block_user_description = await select_block_user_description(session=session, user_id=user_id)
     reward_user = ''
-    if len(reward_db)>1:
-        for reward in reward_db:
-            reward_user += reward['reward']
-    elif len(reward_db)==1:
-        reward_user+=reward_db[0]['reward']
     if type_profile is None:
         text += f"Новый пользователь:\n"
     elif type_profile == 'search_user':
@@ -536,29 +528,29 @@ async def reward_confirm(message:types.Message, state:FSMContext=None):
 
 
 #Принимаем подтверждение подтверждение dp.register_callback_query_handler(reward_complete, state=RewardUser.reward_confirm_state)
-async def reward_complete(call:types.CallbackQuery, callback_data:dict=None,state:FSMContext=None):
-    callback = callback_data['callback']
-    if callback == 'confirm':
-        data = await state.get_data()
-        id_user_reward = data['id_user_reward']
-        reward = data['self_reward']
-        session = call.bot.data['session_maker']
-        await insert_user_awards(session=session, user_id=id_user_reward, reward=reward)
-        await call.answer('Награда установлена')
-        await verify_user(message=call)
-        await state.finish()
-    elif callback == 'wrong':
-        await call.answer('Награда отменена')
-        await state.finish()
-        await verify_user(message=call)
+# async def reward_complete(call:types.CallbackQuery, callback_data:dict=None,state:FSMContext=None):
+#     callback = callback_data['callback']
+#     if callback == 'confirm':
+#         data = await state.get_data()
+#         id_user_reward = data['id_user_reward']
+#         reward = data['self_reward']
+#         session = call.bot.data['session_maker']
+#         await insert_user_awards(session=session, user_id=id_user_reward, reward=reward)
+#         await call.answer('Награда установлена')
+#         await verify_user(message=call)
+#         await state.finish()
+#     elif callback == 'wrong':
+#         await call.answer('Награда отменена')
+#         await state.finish()
+#         await verify_user(message=call)
 
 
 #забрать награду
-async def return_reward_id(message:types.Message):
-    text = 'Напишите ID пользователя у которого хотите забрать награду'
-    kb= await cancel_inline_kb()
-    await edit_message(message=message, text=text, markup=kb)
-    await RewardUser.return_reward_id_state.set()
+# async def return_reward_id(message:types.Message):
+#     text = 'Напишите ID пользователя у которого хотите забрать награду'
+#     kb= await cancel_inline_kb()
+#     await edit_message(message=message, text=text, markup=kb)
+#     await RewardUser.return_reward_id_state.set()
 
 #Принимаем ИД просим награду которую хотим забрать dp.register_message_handler(return_reward_self, state=RewardUser.return_reward_id_state)
 async def return_reward_self(message:types.Message, state:FSMContext=None):
@@ -593,32 +585,32 @@ async def return_reward_confirm(message:types.Message, state:FSMContext=None):
 
 
 #Принимаем подтверждение подтверждение dp.register_callback_query_handler(reward_complete, state=RewardUser.return_reward_confirm_state)
-async def return_reward_complete(call:types.CallbackQuery, callback_data:dict=None,state:FSMContext=None):
-    callback = callback_data['callback']
-    if callback == 'confirm':
-        data = await state.get_data()
-        id_user_reward = data['id_user_reward']
-        reward = data['self_reward']
-        session = call.bot.data['session_maker']
-        await delete_reward(session=session, user_id=id_user_reward, reward=reward)
-        await call.answer('Награда удалена')
-        await verify_user(message=call)
-        await state.finish()
-    elif callback == 'wrong':
-        await call.answer('Награда оставлена')
-        await state.finish()
-        await verify_user(message=call)
+# async def return_reward_complete(call:types.CallbackQuery, callback_data:dict=None,state:FSMContext=None):
+#     callback = callback_data['callback']
+#     if callback == 'confirm':
+#         data = await state.get_data()
+#         id_user_reward = data['id_user_reward']
+#         reward = data['self_reward']
+#         session = call.bot.data['session_maker']
+#         await delete_reward(session=session, user_id=id_user_reward, reward=reward)
+#         await call.answer('Награда удалена')
+#         await verify_user(message=call)
+#         await state.finish()
+#     elif callback == 'wrong':
+#         await call.answer('Награда оставлена')
+#         await state.finish()
+#         await verify_user(message=call)
 
 
 #Раздел "разные ссылки"
-async def different_link_mod(message: Union[ types.Message, types.CallbackQuery]):
-    if isinstance(message, types.CallbackQuery):
-        message = message.message
-    text = 'В данном разделе вы можете изменить ссылки и описания или добавить новые'
-    session = message.bot.data['session_maker']
-    all_info = await select_different_links(session=session)
-    kb = await different_link_mod_kb(all_info)
-    await edit_message(message=message, text=text, markup=kb)
+# async def different_link_mod(message: Union[ types.Message, types.CallbackQuery]):
+#     if isinstance(message, types.CallbackQuery):
+#         message = message.message
+#     text = 'В данном разделе вы можете изменить ссылки и описания или добавить новые'
+#     session = message.bot.data['session_maker']
+#     all_info = await select_different_links(session=session)
+#     kb = await different_link_mod_kb(all_info)
+#     await edit_message(message=message, text=text, markup=kb)
 
 async def different_link_new(call:types.CallbackQuery, state:FSMContext=None):
     text = 'Введите описание'
@@ -640,106 +632,106 @@ async def different_link_new_description(message: types.Message, state:FSMContex
     await NewLink.link_state.set()
     await edit_message(message=message, text=text, markup=kb)
 
-async def different_link_new_link(message:types.Message, state:FSMContext):
-    if message.text in ['Верификация','Жалобы','Наградить','Забрать награду','Разные ссылки','Рекомендации',
-                        'Назначить модератора','Убрать модератора','Скачать БД']:
-        await message.delete()
-        await message.answer('Введите корректное описание или нажмите отмена')
-        return
-    data = await state.get_data()
-    session = message.bot.data['session_maker']
-    link = message.text
-    description = data['description']
-    await insert_different_links(session=session, link=link, description=description)
-    text = 'Добавлена запись:\n\n' \
-           f'{description}\n\n' \
-           f'{link}'
-    await edit_message(message = message, text=text)
-    await state.finish()
+# async def different_link_new_link(message:types.Message, state:FSMContext):
+#     if message.text in ['Верификация','Жалобы','Наградить','Забрать награду','Разные ссылки','Рекомендации',
+#                         'Назначить модератора','Убрать модератора','Скачать БД']:
+#         await message.delete()
+#         await message.answer('Введите корректное описание или нажмите отмена')
+#         return
+#     data = await state.get_data()
+#     session = message.bot.data['session_maker']
+#     link = message.text
+#     description = data['description']
+#     await insert_different_links(session=session, link=link, description=description)
+#     text = 'Добавлена запись:\n\n' \
+#            f'{description}\n\n' \
+#            f'{link}'
+#     await edit_message(message = message, text=text)
+#     await state.finish()
 
-async def different_link_mod_kb_func(call:types.CallbackQuery, callback_data:dict):
-    callback = callback_data['callback']
-    if callback == 'new':
-        await different_link_new(call=call)
-    elif callback == 'existing':
-        id_link = callback_data['id_link']
-        session = call.bot.data['session_maker']
-        all_info = await select_different_links_first(session=session, id_link=id_link)
-        text = f'{all_info[0]["description"]}\n\n' \
-               f'{all_info[0]["link"]}\n'
-        kb = await different_link_edit_descr_or_link(id_link=id_link)
-        await call.message.delete()
-        await call.message.answer(text=text, reply_markup=kb)
-    elif callback == 'cancel':
-        await call.message.delete()
-    await call.answer()
+# async def different_link_mod_kb_func(call:types.CallbackQuery, callback_data:dict):
+#     callback = callback_data['callback']
+#     if callback == 'new':
+#         await different_link_new(call=call)
+#     elif callback == 'existing':
+#         id_link = callback_data['id_link']
+#         session = call.bot.data['session_maker']
+#         all_info = await select_different_links_first(session=session, id_link=id_link)
+#         text = f'{all_info[0]["description"]}\n\n' \
+#                f'{all_info[0]["link"]}\n'
+#         kb = await different_link_edit_descr_or_link(id_link=id_link)
+#         await call.message.delete()
+#         await call.message.answer(text=text, reply_markup=kb)
+#     elif callback == 'cancel':
+#         await call.message.delete()
+#     await call.answer()
 
 #обработчик при изменении описания или ссылки
-async def different_link_edit_descr_or_link_func(call:types.CallbackQuery, callback_data:dict, state:FSMContext=None):
-    callback = callback_data['callback']
-    id_link = callback_data['id_link']
-    if callback == 'description':
-        session = call.message.bot.data['session_maker']
-        all_info = await select_different_links_first(session=session, id_link=id_link)
-        text = f'Пришлите новое описание. Нажмите на описание если хотите его скопировать\n\n' \
-               f'<code>{all_info[0]["description"]}</code>\n'
-        kb = await cancel_inline_kb()
-        await call.message.delete()
-        await call.message.answer(text=text, reply_markup=kb)
-        await EditLink.description_state.set()
-        await state.update_data(id_link=id_link)
-    elif callback == 'link':
-        session = call.message.bot.data['session_maker']
-        all_info = await select_different_links_first( session=session, id_link=id_link )
-        text = f'Пришлите новую ссылку. Нажмите на ссылку если хотите её скопировать\n\n' \
-               f'<code>{all_info[0]["link"]}</code>\n'
-        kb = await cancel_inline_kb()
-        await call.message.delete()
-        await call.message.answer( text=text, reply_markup=kb )
-        await EditLink.link_state.set()
-        await state.update_data( id_link=id_link )
-    elif callback == 'delete':
-        session = call.message.bot.data['session_maker']
-        await delete_different_link(session=session, id_link=id_link)
-        text = 'Запись удалена'
-        await edit_message(message=call, text=text)
-    elif callback == 'cancel':
-        await different_link_mod(message=call)
-    await call.answer()
-async def edit_description(message:types.Message, state:FSMContext):
-    if message.text in ['Верификация','Жалобы','Наградить','Забрать награду','Разные ссылки','Рекомендации',
-                        'Назначить модератора','Убрать модератора','Скачать БД']:
-        await message.delete()
-        await message.answer('Введите корректное описание или нажмите отмена')
-        return
-    new_description = message.text
-    data = await state.get_data()
-    id_link = data['id_link']
-    session = message.bot.data['session_maker']
-    await update_different_link_or_description(session=session, id_link=id_link, description=new_description)
-    await state.finish()
-    await message.delete()
-    text = 'Опиcание изменено на: \n\n' \
-           f'{new_description}'
-    await message.answer(text=text)
+# async def different_link_edit_descr_or_link_func(call:types.CallbackQuery, callback_data:dict, state:FSMContext=None):
+#     callback = callback_data['callback']
+#     id_link = callback_data['id_link']
+#     if callback == 'description':
+#         session = call.message.bot.data['session_maker']
+#         all_info = await select_different_links_first(session=session, id_link=id_link)
+#         text = f'Пришлите новое описание. Нажмите на описание если хотите его скопировать\n\n' \
+#                f'<code>{all_info[0]["description"]}</code>\n'
+#         kb = await cancel_inline_kb()
+#         await call.message.delete()
+#         await call.message.answer(text=text, reply_markup=kb)
+#         await EditLink.description_state.set()
+#         await state.update_data(id_link=id_link)
+#     elif callback == 'link':
+#         session = call.message.bot.data['session_maker']
+#         all_info = await select_different_links_first( session=session, id_link=id_link )
+#         text = f'Пришлите новую ссылку. Нажмите на ссылку если хотите её скопировать\n\n' \
+#                f'<code>{all_info[0]["link"]}</code>\n'
+#         kb = await cancel_inline_kb()
+#         await call.message.delete()
+#         await call.message.answer( text=text, reply_markup=kb )
+#         await EditLink.link_state.set()
+#         await state.update_data( id_link=id_link )
+#     elif callback == 'delete':
+#         session = call.message.bot.data['session_maker']
+#         await delete_different_link(session=session, id_link=id_link)
+#         text = 'Запись удалена'
+#         await edit_message(message=call, text=text)
+#     elif callback == 'cancel':
+#         await different_link_mod(message=call)
+#     await call.answer()
+# async def edit_description(message:types.Message, state:FSMContext):
+#     if message.text in ['Верификация','Жалобы','Наградить','Забрать награду','Разные ссылки','Рекомендации',
+#                         'Назначить модератора','Убрать модератора','Скачать БД']:
+#         await message.delete()
+#         await message.answer('Введите корректное описание или нажмите отмена')
+#         return
+#     new_description = message.text
+#     data = await state.get_data()
+#     id_link = data['id_link']
+#     session = message.bot.data['session_maker']
+#     await update_different_link_or_description(session=session, id_link=id_link, description=new_description)
+#     await state.finish()
+#     await message.delete()
+#     text = 'Опиcание изменено на: \n\n' \
+#            f'{new_description}'
+#     await message.answer(text=text)
 
 
-async def edit_link(message:types.Message, state:FSMContext):
-    if message.text in ['Верификация','Жалобы','Наградить','Забрать награду','Разные ссылки','Рекомендации',
-                        'Назначить модератора','Убрать модератора','Скачать БД']:
-        await message.delete()
-        await message.answer('Введите корректное описание или нажмите отмена')
-        return
-    new_link = message.text
-    data = await state.get_data()
-    id_link = data['id_link']
-    session = message.bot.data['session_maker']
-    await update_different_link_or_description(session=session, id_link=id_link, link=new_link)
-    await state.finish()
-    await message.delete()
-    text = 'Ссылка изменена на: \n\n' \
-           f'{new_link}'
-    await message.answer(text=text)
+# async def edit_link(message:types.Message, state:FSMContext):
+#     if message.text in ['Верификация','Жалобы','Наградить','Забрать награду','Разные ссылки','Рекомендации',
+#                         'Назначить модератора','Убрать модератора','Скачать БД']:
+#         await message.delete()
+#         await message.answer('Введите корректное описание или нажмите отмена')
+#         return
+#     new_link = message.text
+#     data = await state.get_data()
+#     id_link = data['id_link']
+#     session = message.bot.data['session_maker']
+#     await update_different_link_or_description(session=session, id_link=id_link, link=new_link)
+#     await state.finish()
+#     await message.delete()
+#     text = 'Ссылка изменена на: \n\n' \
+#            f'{new_link}'
+#     await message.answer(text=text)
 
 
 #Поиск по ИД
@@ -862,23 +854,23 @@ def moderator_handler(dp: Dispatcher):
     dp.register_message_handler( reward_self, state=RewardUser.reward_id_state )
     dp.register_callback_query_handler(cancel_func, cancel_cd.filter(), state='*')
     dp.register_message_handler( reward_confirm, state=RewardUser.reward_state )
-    dp.register_callback_query_handler( reward_complete,cancel_reward_cd.filter(), state=RewardUser.reward_confirm_state )
+    # dp.register_callback_query_handler( reward_complete,cancel_reward_cd.filter(), state=RewardUser.reward_confirm_state )
     #забрать награду
-    dp.register_message_handler( return_reward_id, text='Забрать награду', is_moderator=True )
+    # dp.register_message_handler( return_reward_id, text='Забрать награду', is_moderator=True )
     dp.register_message_handler( return_reward_self, state=RewardUser.return_reward_id_state )
     dp.register_callback_query_handler( cancel_func, cancel_cd.filter(), state=RewardUser.return_reward_id_state )
     dp.register_message_handler( return_reward_confirm, state=RewardUser.return_reward_state )
-    dp.register_callback_query_handler( return_reward_complete, cancel_return_reward_cd.filter(), state=RewardUser.return_reward_confirm_state )
+    # dp.register_callback_query_handler( return_reward_complete, cancel_return_reward_cd.filter(), state=RewardUser.return_reward_confirm_state )
     #Разные ссылки
-    dp.register_message_handler(different_link_mod, text='Разные ссылки', is_moderator=True)
-    dp.register_callback_query_handler(different_link_mod_kb_func, different_link_CD.filter())
+    # dp.register_message_handler(different_link_mod, text='Разные ссылки', is_moderator=True)
+    # dp.register_callback_query_handler(different_link_mod_kb_func, different_link_CD.filter())
     #Разные ссылки новое
     dp.register_message_handler( different_link_new_description, state=NewLink.description_state)
-    dp.register_message_handler( different_link_new_link, state=NewLink.link_state)
+    # dp.register_message_handler( different_link_new_link, state=NewLink.link_state)
     #Разные ссылки редактирование
-    dp.register_callback_query_handler(different_link_edit_descr_or_link_func, different_link_edit_descr_or_link_CD.filter())
-    dp.register_message_handler(edit_description, state=EditLink.description_state)
-    dp.register_message_handler(edit_link, state=EditLink.link_state)
+    # dp.register_callback_query_handler(different_link_edit_descr_or_link_func, different_link_edit_descr_or_link_CD.filter())
+    # dp.register_message_handler(edit_description, state=EditLink.description_state)
+    # dp.register_message_handler(edit_link, state=EditLink.link_state)
     #Поиск по ИД
     dp.register_message_handler(search_user_id_telegram, text='Поиск по ID телеграм', is_moderator=True)
     dp.register_callback_query_handler(search_user_id_telegram_func, text='search_for_id', is_moderator=True)

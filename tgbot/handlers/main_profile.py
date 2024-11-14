@@ -1,21 +1,24 @@
+import datetime
 import logging
 from typing import Union, List
 
-from aiogram import types
+from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
+from aiogram.types import ContentType
 from aiogram.utils.exceptions import MessageNotModified
+from dateutil.relativedelta import relativedelta
 
 from tgbot.handlers.edit_profile import first_edit_profile
 from tgbot.handlers.main_menu import first_page, scrolling_photo_func
 from tgbot.handlers.update_photo_table import update_photo_func
 from tgbot.keyboards.inline import my_profile_cd, my_profile_kb, edit_my_photos_kb, my_photos_cd, edit_video_card_kb, \
     my_video_card_cd, cancel_inline_kb, cancel_cd, view_my_profile_cd, view_my_profile_keyboard, \
-    scrolling_photos_main_cd
+    scrolling_photos_main_cd, paid_subs_kb, paid_subs_cd
 from tgbot.keyboards.reply import main_menu_kb, cancel_kb
 from tgbot.misc.states import EditOther
 from tgbot.models.sql_request import select_user_anketa, select_user, update_user_info, select_photo, \
     update_first_photo, select_first_photo, insert_photo, delete_photo_in_table, select_video_card, \
-    select_rejection_user
+    select_rejection_user, select_price_subscription, insert_paid_subscription, NumberOfDays
 from tgbot.services.auxiliary_functions import edit_message, add_photo_func, format_text_profile
 
 
@@ -281,22 +284,17 @@ async def view_my_profile_callback(call:types.CallbackQuery, callback_data:dict=
     session_maker = call.bot.data['session_maker']
     user_anket = await select_user( session=session_maker, user_id=user_id )
     text = None
-    video = user_anket[0]['video']
     if callback == 'about_me':
         text = user_anket[0]['about_my_self']
     elif callback == 'video_card':
         logging.info( f'---------video--------------' )
-        logging.info( f'---------{video}--------------' )
-        if video is None:
-            await call.answer( 'У пользователя нет видеовизитки' )
-            return
     elif callback == 'more_photos':
         await scrolling_photo_func( call=call, user_id_anket=user_id, page=0, type_profiles='main_profile' )
         return
     elif callback == 'profile':
         await view_my_profile(call=call)
     kb = await view_my_profile_keyboard(call_back=callback)
-    await edit_message( message=call, text=text, markup=kb, video= video if callback == 'video_card' else None )
+    await edit_message( message=call, text=text, markup=kb)
 
 async def scroll_photo_main_profile(call:types.CallbackQuery, callback_data:dict):
     callback = callback_data['callback']
@@ -314,6 +312,74 @@ async def scroll_photo_main_profile(call:types.CallbackQuery, callback_data:dict
     await call.answer()
 
 
+async def paid_subscription(call: types.CallbackQuery):
+    session_maker = call.bot.data['session_maker']
+    data = await select_price_subscription( session=session_maker )
+    text = 'Подписка позволяет писать и смотреть тех кто лайкнул тебя и лайкнуть в ответ, а так же писать сообщения ' \
+           'без взаимной симпатии\n'
+    for dat in data:
+        text += f'{dat["title"]}: {int(dat["price"])} рублей\n'
+    user_id = call.message.chat.id
+    kb = await paid_subs_kb(data = data,user_id=user_id)
+    await call.message.answer(text=text, reply_markup=kb)
+
+
+async def paid_subs_processor(call: types.CallbackQuery, callback_data:dict):
+    await call.bot.delete_message(call.from_user.id, call.message.message_id)
+    session = call.bot.data['session_maker']
+    price_all_info = await select_price_subscription(session=session)
+    price_id = callback_data['id_price']
+    price = ''
+    title = ''
+    number_of_day = ''
+    yootoken = call.bot['config'].yootoken.yootoken
+    logging.info(f'----------token{yootoken}')
+    for p in price_all_info:
+        if int(p['id']) == int(price_id):
+            title = p['title']
+            price = p['price']
+            number_of_day = p['number_of_days']
+        else:
+            pass
+    logging.info(f'----------price-{price}, title - {title}')
+    await call.bot.send_invoice(chat_id=call.message.chat.id, title = 'Оформление подписки', description= title,
+                                payload=f'{number_of_day}', provider_token=yootoken,currency='RUB',
+                                start_parameter= 'subscription', prices=[{'label': 'руб', 'amount': int(price)*100}])
+
+async def procces_pre_paid_subs(pre_check_query: types.PreCheckoutQuery):
+    user_id = pre_check_query.from_user.id
+    # try:
+    logging.info(pre_check_query)
+    session = pre_check_query.bot['session_maker']
+    number_of_day = pre_check_query.invoice_payload
+
+
+    # logging.info(f'----------------------------------------------------------- {date_before}, {type(date_before)} ')
+    try:
+        await insert_paid_subscription(session=session, user_id=user_id, number_of_day=number_of_day)
+    except NumberOfDays:
+        await pre_check_query.bot.send_message(chat_id=user_id, text='Что то пошло не так обратитесь к администрации')
+        return
+    await pre_check_query.bot.answer_pre_checkout_query( pre_check_query.id, ok=True )
+    # except:
+    #     text = 'Что то пошло не так'
+    #     await pre_check_query.bot.send_message(chat_id=user_id, text=text)
+
+
+async def pay_paid_subs(message:types.Message):
+    logging.info(f'----------------------{message.successful_payment}')
+    await message.answer( 'Вы подписны на бота' )
+
+    # try:
+    #     session = message.bot['session_maker']
+    #     user_id = message.chat.id
+    #     number_of_day = message.successful_payment.invoice_payload
+    #     await insert_paid_subscription(session=session, user_id=user_id, number_of_days=int(number_of_day))
+    #     await message.answer('Вы подписны на бота')
+    # except:
+    #     return
+    # else:
+    #     await message.answer('xxxxxxxxxxxxxx')
 #My profile callback
 async def my_profile_callback(call:types.CallbackQuery, callback_data:dict):
     callback = callback_data['callback']
@@ -324,8 +390,8 @@ async def my_profile_callback(call:types.CallbackQuery, callback_data:dict):
         await about_me_edit(message=call)
     elif callback == 'edit_photo':
         await edit_my_photo(call=call, user_id=user_id)
-    elif callback == 'edit_video_card':
-        await edit_my_video_card(message=call, user_id=user_id)
+    elif callback == 'get_subscribe':
+        await paid_subscription(call=call)
     elif callback == 'view_profile':
         await view_my_profile(call=call)
     await call.answer()
@@ -334,7 +400,7 @@ async def my_profile_callback(call:types.CallbackQuery, callback_data:dict):
 
 
 
-def main_profile_handler(dp):
+def main_profile_handler(dp:Dispatcher):
     dp.register_message_handler(my_profile, text='📜Моя анкета',is_user = True)
     # dp.register_message_handler(my_profile_plug, text='Моя анкета')
     dp.register_callback_query_handler(my_profile_callback, my_profile_cd.filter())
@@ -356,3 +422,7 @@ def main_profile_handler(dp):
     # view my profile
     dp.register_callback_query_handler(view_my_profile_callback, view_my_profile_cd.filter())
     dp.register_callback_query_handler(scroll_photo_main_profile,scrolling_photos_main_cd.filter())
+    #paid
+    dp.register_callback_query_handler(paid_subs_processor, paid_subs_cd.filter())
+    dp.register_pre_checkout_query_handler(procces_pre_paid_subs)
+    dp.register_message_handler(pay_paid_subs, content_types=ContentType.SUCCESSFUL_PAYMENT)

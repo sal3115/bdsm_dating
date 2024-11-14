@@ -6,7 +6,9 @@ from environs import Env
 @dataclass
 class DbConfig:
     host: str
-
+    db_user: str
+    db_pass: str
+    db_name: str
 
 @dataclass
 class TgBot:
@@ -21,10 +23,17 @@ class Miscellaneous:
 
 
 @dataclass
+class Yookassa:
+    yootoken: str
+
+@dataclass
 class Config:
     tg_bot: TgBot
     db: DbConfig
     misc: Miscellaneous
+    yootoken: Yookassa
+
+
 
 
 def load_config(path: str = None):
@@ -39,6 +48,13 @@ def load_config(path: str = None):
         ),
         db=DbConfig(
             host=env.str('DB_HOST'),
+            db_user=env.str( 'DB_USER' ),
+            db_pass=env.str( 'DB_PASS' ),
+            db_name=env.str( 'DB_NAME' ),
+
+        ),
+        yootoken = Yookassa(
+            yootoken = env.str('YOOTOKEN')
         ),
         misc=Miscellaneous()
     )

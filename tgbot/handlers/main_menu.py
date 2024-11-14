@@ -47,6 +47,8 @@ async def view_questionnaires(message:Union[types.Message, types.CallbackQuery],
         ankets_data = await select_user_profile_not_interest(session=session_maker, user_id=user_id)
     else:
         ankets_data= await select_user_anketa(session=session_maker,user_id=user_id)
+    logging.info(['---------len anket---------', len(ankets_data)])
+
     if len(ankets_data) == 0:
         if message.reply_markup:
             await message.edit_reply_markup()
@@ -172,8 +174,8 @@ async def processing_dating_keyboard(call:types.CallbackQuery, callback_data:dic
             await call.answer( 'Добавьте фото' )
             return
         else:
-            await view_questionnaires( message=call, page=page + 1 )
             await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=False )
+            await view_questionnaires( message=call, page=page + 1 )
     elif callback == 'complain':
         text = 'Напишите свою жалобу'
         kb = await cancel_inline_kb()

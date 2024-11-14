@@ -7,10 +7,8 @@ async def main_menu_kb(status_user=None):
         kb.insert(KeyboardButton(text='👀Смотреть анкеты'))
         kb.insert(KeyboardButton(text='❤️Избранное'))
         kb.insert(KeyboardButton(text='📜Моя анкета'))
-    if status_user is None or status_user == 'exit_user':
-        kb.insert(KeyboardButton(text='💡Полезные советы'))
+    if status_user is None or status_user == 'block_user':
         kb.insert(KeyboardButton(text='🛠Тех. поддержка'))
-        kb.insert(KeyboardButton(text='📱Разные ссылки'))
     if status_user == 'delete_user' or status_user == 'exit_user':
         kb.insert(KeyboardButton(text='Восстановить аккаунт'))
     else:
@@ -37,4 +35,9 @@ async def moderation_main_menu_kb(admin_kb=None):
 async def cancel_kb():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.insert( KeyboardButton( text='Отмена' ) )
+    return kb
+
+
+async def none_kb():
+    kb = ReplyKeyboardMarkup(resize_keyboard=True)
     return kb

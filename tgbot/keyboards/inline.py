@@ -8,7 +8,7 @@ import datetime
 
 from aiogram.utils.callback_data import CallbackData
 
-from tgbot.models.sql_request import get_Confessions, select_user_name
+from tgbot.models.sql_request import  select_user_name
 
 
 async def func_kb_gender():
@@ -58,21 +58,21 @@ async def func_kb_phone(button_next=False, button_complete=False):
     return kb
 
 
-async def func_kb_confessions(message: Union[types.Message, types.CallbackQuery]):
+async def func_kb_position(message: Union[types.Message, types.CallbackQuery], your_position=None):
     print(message)
-    if isinstance(message, types.Message):
-        session = message.bot['session_maker']
-    if isinstance(message, types.CallbackQuery):
-        session = message.message.bot['session_maker']
-    Confessions = await get_Confessions(session)
     kb = InlineKeyboardMarkup()
-    for confession in Confessions:
-        text = confession[1]
-        id_conf = confession[0]
-        but = InlineKeyboardButton(text=text, callback_data=f'{text}, {id_conf}')
+    if your_position is None or your_position == 'Свитч':
+        position_theme = ['Доминирование', 'Подчинение', 'Свитч']
+    elif your_position == 'Доминирование':
+        position_theme = ['Подчинение', 'Свитч']
+    elif your_position == 'Подчинение':
+        position_theme = ['Доминирование', 'Свитч']
+    else:
+        logging.info('Что то пошло не так ')
+    for position in position_theme:
+        text = position
+        but = InlineKeyboardButton(text=text, callback_data=f'{text}')
         kb.add(but)
-    but = InlineKeyboardButton(text='Тут нет моей конфессии', callback_data=f'conf_new')
-    kb.add(but)
     return kb
 
 
@@ -202,7 +202,7 @@ async def func_kb_acsept_pravila():
     return kb
 
 async def func_kb_acsept_personal_data():
-    text = 'Принять'
+    text = 'Хорошо'
     kb = InlineKeyboardMarkup()
     but = InlineKeyboardButton(text=text, callback_data='acseptPersonalData')
     kb.add(but)
@@ -258,13 +258,13 @@ async def dating_keyboard(user_id=0, page=0, type_profiles=None, url=None, call_
     else:
         markup.add(InlineKeyboardButton(text='📝О себе', callback_data=callback_data_type.new(callback='about_me',
                                                                                         user_id=user_id, page=page)))
-    if call_back=='video_card':
-        markup.add(InlineKeyboardButton(text='📜Анкета', callback_data=callback_data_type.new(callback='profile',
-                                                                                            user_id=user_id,
-                                                                                            page=page)))
-    else:
-        markup.add(InlineKeyboardButton(text='📽Видеовизитка', callback_data=callback_data_type.new(callback='video_card',
-                                                                                              user_id=user_id, page=page)))
+    # if call_back=='video_card':
+    #     markup.add(InlineKeyboardButton(text='📜Анкета', callback_data=callback_data_type.new(callback='profile',
+    #                                                                                         user_id=user_id,
+    #                                                                                         page=page)))
+    # else:
+    #     markup.add(InlineKeyboardButton(text='📽Видеовизитка', callback_data=callback_data_type.new(callback='video_card',
+    #                                                                                           user_id=user_id, page=page)))
     markup.insert(InlineKeyboardButton(text='📸Еще фото',
                                        callback_data=callback_data_type.new(callback='more_photos',
                                                                             user_id=user_id, page=page)))
@@ -341,7 +341,7 @@ async def my_profile_kb(user_id):
         InlineKeyboardButton( text='Изменить "о себе"', callback_data=my_profile_cd.new( callback='edit_about_me', user_id=user_id  ) ) )
     markup.add( InlineKeyboardButton( text='Изменить фото',
                                       callback_data=my_profile_cd.new( callback='edit_photo', user_id=user_id  ) ) )
-    markup.add( InlineKeyboardButton( text='Изменить видеовизитка', callback_data=my_profile_cd.new( callback='edit_video_card', user_id=user_id  ) ) )
+    markup.add( InlineKeyboardButton( text='Оформить подписку', callback_data=my_profile_cd.new( callback='get_subscribe', user_id=user_id  ) ) )
     return markup
 
 
@@ -352,10 +352,10 @@ async def view_my_profile_keyboard(call_back=None):
         markup.add(InlineKeyboardButton(text='Анкета', callback_data=view_my_profile_cd.new(callback='profile')))
     else:
         markup.add(InlineKeyboardButton(text='📝О себе', callback_data=view_my_profile_cd.new(callback='about_me')))
-    if call_back=='video_card':
-        markup.add(InlineKeyboardButton(text='Анкета', callback_data=view_my_profile_cd.new(callback='profile')))
-    else:
-        markup.add(InlineKeyboardButton(text='📽Видеовизитка', callback_data=view_my_profile_cd.new(callback='video_card')))
+    # if call_back=='video_card':
+    #     markup.add(InlineKeyboardButton(text='Анкета', callback_data=view_my_profile_cd.new(callback='profile')))
+    # else:
+    #     markup.add(InlineKeyboardButton(text='📽Видеовизитка', callback_data=view_my_profile_cd.new(callback='video_card')))
     markup.insert(InlineKeyboardButton(text='📸Еще фото',
                                        callback_data=view_my_profile_cd.new(callback='more_photos')))
     return markup
@@ -473,13 +473,13 @@ async def verify_user_kb(user_id=0, all_info_user=None, page = 0, type_profile=N
     markup = InlineKeyboardMarkup( row_width=2 )
     markup.insert(
         InlineKeyboardButton( text='Фото', callback_data=verify_user_cd.new( callback='photo', user_id=user_id, page=page, tp=tp ) ) )
-    if call_back =='video':
-        markup.add( InlineKeyboardButton( text='Анкета', callback_data=verify_user_cd.new( callback='profile',
-                                                                                                user_id=user_id,
-                                                                                                page=page, tp=tp ) ) )
-    else:
-        markup.insert(
-            InlineKeyboardButton( text='Видеовизитка', callback_data=verify_user_cd.new( callback='video', user_id=user_id, page=page, tp=tp ) ) )
+    # if call_back =='video':
+    #     markup.add( InlineKeyboardButton( text='Анкета', callback_data=verify_user_cd.new( callback='profile',
+    #                                                                                             user_id=user_id,
+    #                                                                                             page=page, tp=tp ) ) )
+    # else:
+    #     markup.insert(
+    #         InlineKeyboardButton( text='Видеовизитка', callback_data=verify_user_cd.new( callback='video', user_id=user_id, page=page, tp=tp ) ) )
     if call_back == 'about_me':
         markup.add( InlineKeyboardButton( text='Анкета', callback_data=verify_user_cd.new( callback='profile',
                                                                                             user_id=user_id,
@@ -563,8 +563,8 @@ async def complaints_profile_kb(user_id=0, session=None, page = 0):
     markup = InlineKeyboardMarkup( row_width=2 )
     markup.insert(
         InlineKeyboardButton( text='Фото', callback_data=complaints_profile_cd.new( callback='photo', user_id=user_id, page=page ) ) )
-    markup.insert(
-        InlineKeyboardButton( text='Видеовизитка', callback_data=complaints_profile_cd.new( callback='video', user_id=user_id, page=page ) ) )
+    # markup.insert(
+    #     InlineKeyboardButton( text='Видеовизитка', callback_data=complaints_profile_cd.new( callback='video', user_id=user_id, page=page ) ) )
     markup.insert(
         InlineKeyboardButton( text='О себе',
                               callback_data=complaints_profile_cd.new( callback='about_me', user_id=user_id, page=page ) ) )
@@ -738,3 +738,12 @@ async def cancel_inline_kb(user_id=0, page=0):
     markup.insert(
         InlineKeyboardButton( text='Отмена', callback_data=cancel_cd.new( callback='cancel', user_id=user_id, page=page ) ) )
     return markup
+
+
+paid_subs_cd = CallbackData('pscd', 'id_price', 'user_id')
+async def paid_subs_kb(data ,user_id):
+    markup = InlineKeyboardMarkup( row_width=3 )
+    for dat in data:
+        markup.insert(InlineKeyboardButton( text=f'{dat["title"]}', callback_data= paid_subs_cd.new(id_price = dat['id'], user_id=user_id) ) )
+    return markup
+

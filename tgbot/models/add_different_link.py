@@ -1,23 +1,17 @@
 import asyncio
 
 from tgbot.models.engine import create_engine_db, get_session_maker
-from tgbot.models.sql_request import insert_different_links, insert_conf
+from tgbot.models.sql_request import insert_users
 
-link_diffs = [{'link':'https://youtube.com/@pyataykins', 'description':'Ютуб канал о семейных ценностях "Пятайкины". Тут множество отличных примеров крепких и счастливых семей у которых можно многому научиться! '},
-              {'link':'https://pyataykins.com/course', 'description':'Пройдите онлайн курс "Как найти того самого человека с которым я смогу построить крепкую семью" и начните строить отношения по правильным принципам!'},
-              {'link':'https://t.me/+SKzVxMaw2GExNTUy ', 'description':'Закрытый христианский клуб Юлии Пятайкиной "Изнутри наружу" Это сообщество для девушек-христианок в котором мы вместе отказываемся от сахара, общаемся, тренируемся духом и телом. Как говорят участницы: "У вас тут так душевно, я нигде такой атмосферы поддержки и принятия не встречала!"'},
-              {'link':'http://pyataykin.tilda.ws/', 'description':'Антон Пятайкин - Ведущий на ваше мероприятие, свадьбу, корпоратив или бизнес событие. Дорого. '}]
-
-confessions = ['Баптисты', 'Пятидесятники', 'Харизматы', 'Евангелисты', 'Адвентисты', 'Англикане',
-                   'Кальвинисты', 'Лютеране', 'Методисты', 'Пресвитериане']
-
+users = {'user_id':465090182, 'name': "asasa",  'user_name':  "salvat3115",   'gender': "women" ,
+         'birthday': "2001-01-01" ,  'city': "фывфы" , 'about_me':  "фывфыв", 'partner_another_city':False,
+         'min_age':18, 'max_age':23}
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    engine = create_engine_db( '/tgbot/models/db_datingBot.sqlite' )
+    engine = create_engine_db( db_path='localhost', db_user='user_bdsm', db_pass='78O89p96', name_db='db_bdsm'  )
+
     session = get_session_maker( engine )
-    for l in link_diffs:
-        link = l['link']
-        description = l['description']
-        lll = loop.run_until_complete( insert_different_links( session=session, link=link, description=description ) )
-    for conf in confessions:
-        lll = loop.run_until_complete( insert_conf( session=session, confession=conf) )
+    for k in range(10):
+        users['user_id'] = users['user_id'] + k+1
+        print(users['user_id'] )
+        lll = loop.run_until_complete( insert_users( session=session, params = users ) )
