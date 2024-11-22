@@ -27,8 +27,8 @@ from tgbot.services.auxiliary_functions import edit_message, format_text_profile
 
 async def text_verify_user(user=None, user_id = None, session=None, type_profile = None):
     status_all = {'user':'Пользователь', 'hidden_user':'Скрытый пользователь', 'delete_user':'Удаленный пользователь',
-                  'exit_user':'Пользователь вышел', 'moderator':'Модератор','admin':'Администратор','block':'Заблокированый пользователь',
-                  'ver_user': 'Пользователь с отклоненной верификацией'}
+                  'exit_user':'Пользователь вышел', 'moderator':'Модератор','admin':'Администратор','block_user':'Заблокированый пользователь',
+                  'no_ver_user': 'Пользователь с отклоненной верификацией'}
 
     text =''
     if user_id:
@@ -51,22 +51,12 @@ async def text_verify_user(user=None, user_id = None, session=None, type_profile
     text += f"user_id: {user['user_id']} \n" \
     f"Статус: {status_all[user['status']]} \n" \
     f"Модерация: {'✅' if user['moderation'] else 'нет'} \n" \
-    f"Гарантор: {'📮' if user['guarantor'] is not None else 'нет'} \n" \
-    f"Награды: {'Нет'if len(reward_user)<1 else reward_user} \n" \
-    f"Фамилия Имя: {user['last_name']} {user['first_name']}\n" \
+    f"Имя: {user['first_name']}\n" \
     f"User_name: {user['username']}\n" \
-    f"Номер телефона: {user['phone_number']}\n" \
-    f"Почта: {user['e_mail']}\n" \
     f"Пол: {'женский' if user['gender']=='women' else 'мужской'}\n" \
     f"Дата рождения: {correct_date_birthday}\n" \
-    f"Страна проживания: {user['country']}\n" \
-    f"Город проживания: {user['town']}\n" \
-    f"Конфессия: {user['confession']}\n" \
-    f"Церковь: {user['church']}\n" \
-    f"Соц. сеть: {user['social_network']}\n" \
+    f"Город проживания: {user['city']}\n" \
     f"Партнер из другого города: {'Да' if user['partner_another_city'] else 'Нет'}\n" \
-    f"Партнер из другой страны: {'Да' if user['partner_another_town'] else 'Нет'}\n" \
-    f"Партнер из другой конфессии: {'Да' if user['partner_another_conf'] else 'Нет'}\n" \
     f"Минимальный возраст: {user['min_age']}\n" \
     f"Максимальный возраст: {user['max_age']}\n" \
     f"Дата регистрации :{correct_time_reg}\n"
@@ -94,7 +84,7 @@ async def verification(message:Union [types.Message, types.CallbackQuery], page 
     logging.info(page)
 
     if len(users) == 0:
-        await message.answer('анкет нет')
+        await edit_message(message=message, text='анкет нет')
         return
     if page+1 > len(users):
         page = 0
@@ -104,15 +94,15 @@ async def verification(message:Union [types.Message, types.CallbackQuery], page 
     kb = await verify_user_kb(user_id=user_profile['user_id'], page=page)
     if len(photos)<1:
         await message.delete()
-        await message.answer(text=text, reply_markup=kb)
+        await edit_message(message=message, text=text, markup=kb)
     elif len(photos) > 0:
         await message.delete()
         if len(text) > 1024:
             new_text = text.split('Дата регистрации')
             await message.answer_photo(photo=photos[0]['photo_id'],caption=new_text[0])
-            await message.answer(text=f'Дата регистрации{new_text[1]}', reply_markup=kb)
+            await edit_message(message=message, text=f'Дата регистрации{new_text[1]}', markup=kb)
         else:
-            await message.answer_photo(photo=photos[0]['photo_id'],caption=text, reply_markup=kb)
+            await edit_message(message=message, photo=photos[0]['photo_id'],text=text, markup=kb)
 
 
 #Фото
@@ -145,13 +135,13 @@ async def no_verification(message:types.Message, state:FSMContext):
     if len(check_rejection) > 0:
         await delete_rejecting_verification(session=session, user_id=user_id)
     await insert_rejecting_verification(session=session, user_id=user_id, description=answer_moderation)
-    await update_user_info(session=session, user_id=user_id, status = 'ver_user')
+    await update_user_info(session=session, user_id=user_id, status = 'no_ver_user')
     try:
         await message.bot.send_message(chat_id=user_id, text=answer_moderation)
     except BotBlocked:
         info_user = await select_user(session=session, user_id=user_id)
         status = info_user[0]['status']
-        if status !='block':
+        if status !='block_user':
             await update_user_info(session=session, user_id=user_id, status='exit_user')
         else:
             pass
@@ -187,7 +177,7 @@ async def write_moderation(message:types.Message, state:FSMContext):
         session = message.bot.data['session_maker']
         info_user = await select_user(session=session, user_id=user_id)
         status = info_user[0]['status']
-        if status != 'block':
+        if status != 'block_user':
             await update_user_info(session=session, user_id=user_id, status = 'exit_user')
         else:
             pass
@@ -239,9 +229,9 @@ async def verify_kb(call: types.CallbackQuery, callback_data:dict, counter=0, st
             await edit_message( message=call, text=about_me, markup=kb )
     elif callback == 'verify':
         profile_user = await select_user( session=session, user_id=user_id_profile )
-        if profile_user[0]['status'] == 'block':
+        if profile_user[0]['status'] == 'block_user':
             await update_user_info( session=session, user_id=user_id_profile, moderation=True,
-                                    time_verif=datetime.datetime.now().date(), status='block' )
+                                    time_verif=datetime.datetime.now().date(), status='block_user' )
         else:
             await update_user_info(session=session, user_id=user_id_profile, moderation=True, time_verif=datetime.datetime.now().date(), status='user' )
         check_rejecttion = await select_rejection_user(session=session, user_id=user_id_profile)
@@ -267,7 +257,7 @@ async def verify_kb(call: types.CallbackQuery, callback_data:dict, counter=0, st
         all_user_info = await select_user(session=session, user_id=user_id_profile)
         user_info = all_user_info[0]
         status = user_info['status']
-        if status == 'block':
+        if status == 'block_user':
             check_block_description = await select_block_user_description( session=session, user_id=user_id_profile )
             check_rejection_description = await select_rejection_user( session=session, user_id=user_id_profile )
             if len( check_block_description ) > 0:
@@ -284,7 +274,7 @@ async def verify_kb(call: types.CallbackQuery, callback_data:dict, counter=0, st
         all_user_info = await select_user( session=session, user_id=user_id_profile )
         user_info = all_user_info[0]
         status = user_info['status']
-        if status == 'block':
+        if status == 'block_user':
             await call.answer(text='Данный пользователь и так заблокирован')
         else:
             text = 'Напиши причину блокировки пользователя'
@@ -363,7 +353,7 @@ async def block_user_state(message:types.Message, state:FSMContext):
     user_id_profile = data_state['user_id']
     page = data_state['page']
     session = message.bot.data['session_maker']
-    await update_user_info( session=session, user_id=user_id_profile, status='block' )
+    await update_user_info( session=session, user_id=user_id_profile, status='block_user' )
     await insert_block_user_description(session=session, user_id=user_id_profile, description=reason_for_blocking)
     text = 'Данный пользователь заблокирован'
     await edit_message(message=message, text=text)
@@ -410,9 +400,9 @@ async def complaints_kb_func(call: types.CallbackQuery, callback_data:dict):
     callback = callback_data['callback']
     complaints_user_id = callback_data['com_user_id']
     page = int(callback_data['page'])
-    if callback == 'block':
+    if callback == 'block_user':
         session = call.bot.data['session_maker']
-        await update_user_info(session= session, user_id=complaints_user_id, status = 'block')
+        await update_user_info(session= session, user_id=complaints_user_id, status = 'block_user')
         await update_complaint_decision(session=session, complaint_user_id=complaints_user_id, decision=True)
         await call.answer('Пользователь заблокирован')
         await call.message.delete()

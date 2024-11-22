@@ -252,11 +252,11 @@ async def dating_keyboard(user_id=0, page=0, type_profiles=None, url=None, call_
         callback_data_type = dating_keyboard_cb
     markup = InlineKeyboardMarkup(row_width=2)
     if call_back=='about_me':
-        markup.add(InlineKeyboardButton(text='📜Анкета', callback_data=callback_data_type.new(callback='profile',
+        markup.add(InlineKeyboardButton(text='Анкета', callback_data=callback_data_type.new(callback='profile',
                                                                                             user_id=user_id,
                                                                                             page=page)))
     else:
-        markup.add(InlineKeyboardButton(text='📝О себе', callback_data=callback_data_type.new(callback='about_me',
+        markup.add(InlineKeyboardButton(text='О себе', callback_data=callback_data_type.new(callback='about_me',
                                                                                         user_id=user_id, page=page)))
     # if call_back=='video_card':
     #     markup.add(InlineKeyboardButton(text='📜Анкета', callback_data=callback_data_type.new(callback='profile',
@@ -265,7 +265,7 @@ async def dating_keyboard(user_id=0, page=0, type_profiles=None, url=None, call_
     # else:
     #     markup.add(InlineKeyboardButton(text='📽Видеовизитка', callback_data=callback_data_type.new(callback='video_card',
     #                                                                                           user_id=user_id, page=page)))
-    markup.insert(InlineKeyboardButton(text='📸Еще фото',
+    markup.insert(InlineKeyboardButton(text='Фото',
                                        callback_data=callback_data_type.new(callback='more_photos',
                                                                             user_id=user_id, page=page)))
     if type_profiles == 'mutual_interest':
@@ -278,27 +278,31 @@ async def dating_keyboard(user_id=0, page=0, type_profiles=None, url=None, call_
                                                                                                       user_id=user_id,
                                                                                                       page=page ) ) )
         else:
-            markup.add(InlineKeyboardButton(text='😍Интересно',
+            markup.add(InlineKeyboardButton(text='👍',
                                        callback_data=callback_data_type.new(callback='interesting',
                                                                             user_id=user_id, page=page)))
     if type_profiles == 'not_interested_me':
-        markup.insert( InlineKeyboardButton( text='😍Убрать дизлайк',
+        markup.insert( InlineKeyboardButton( text='Убрать 👎',
                                              callback_data=callback_data_type.new( callback='remove_dislike',
                                                                                    user_id=user_id, page=page ) ) )
     elif type_profiles == 'favorites_profile':
-        markup.insert( InlineKeyboardButton( text='😍Убрать лайк',
+        markup.insert( InlineKeyboardButton( text='Убрать 👍',
                                              callback_data=callback_data_type.new( callback='remove_like',
                                                                                    user_id=user_id, page=page ) ) )
     else:
         if call_back != 'interesting':
-            markup.insert(InlineKeyboardButton(text='🙃Не показывать',
+            markup.insert(InlineKeyboardButton(text='👎',
                                        callback_data=callback_data_type.new(callback='dont_show',
                                                                             user_id=user_id, page=page)))
 
-    markup.add(InlineKeyboardButton(text='😡Пожаловаться',
+    markup.add(InlineKeyboardButton(text='Жалоба',
                                        callback_data=callback_data_type.new(callback='complain',
                                                                             user_id=user_id, page=page)))
-    markup.insert(InlineKeyboardButton(text='😌Дальше',
+
+    markup.insert( InlineKeyboardButton( text='Назад',
+                                         callback_data=callback_data_type.new( callback='back_anket',
+                                                                               user_id=user_id, page=page ) ) )
+    markup.insert(InlineKeyboardButton(text='Следующая',
                                        callback_data=callback_data_type.new(callback='following_anket',
                                                                             user_id=user_id, page=page)))
     return markup
@@ -507,9 +511,6 @@ async def verify_user_kb(user_id=0, all_info_user=None, page = 0, type_profile=N
                 InlineKeyboardButton( text='Заблокировать',
                                       callback_data=verify_user_cd.new( callback='lock', user_id=user_id,
                                                                         page=page, tp=tp ) ) )
-        markup.insert(
-            InlineKeyboardButton(text='Подтвердить гарант', callback_data=verify_user_cd.new( callback='confirm_garant', user_id=user_id,
-                                                                    page=page, tp=tp)))
         markup.insert(
             InlineKeyboardButton( text='Изменить данные',
                                   callback_data=verify_user_cd.new( callback='edit_user', user_id=user_id,

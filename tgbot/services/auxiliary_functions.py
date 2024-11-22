@@ -1,11 +1,13 @@
 import logging
 import re
+import textwrap
 from datetime import datetime, timedelta, date
+from math import ceil
 from typing import Union, List
 
 from aiogram import types
 from aiogram.types import InputMedia, InputMediaVideo
-from aiogram.utils.exceptions import MessageCantBeEdited, BadRequest, MessageToEditNotFound
+from aiogram.utils.exceptions import MessageCantBeEdited, BadRequest, MessageToEditNotFound, MessageToDeleteNotFound
 
 from tgbot.models.sql_request import select_photo, select_user
 from tgbot.services.calculate_age import calculateAge
@@ -130,37 +132,133 @@ async def edit_message(message: Union[types.Message, types.CallbackQuery], text=
             try:
                 message_callback = await message.edit_caption(caption=text, reply_markup=markup)
             except MessageToEditNotFound:
-                await message.delete()
-                message_callback = await message.answer(text=text, reply_markup=markup)
+                try:
+                    await message.delete()
+                    message_callback = await message.answer(text=text, reply_markup=markup)
+                except MessageToDeleteNotFound:
+                    message_callback = await message.answer(text=text, reply_markup=markup)
+
     if markup:
         if 'inline_keyboard' in markup:
             message.bot['last_message_id'] = message_callback.message_id
 
+async def text_separator(text, photo = False):
+    if photo:
+        if len(text) < 1000:
+            return text
+        elif len(text) >= 1000: #len(text) = 2000  |   len(text) = 5000
+            k = ceil( len( text ) / 1000 ) #2000/1000 = 2 |  5000/ 1000
+            n = int( len( text ) / int( k ) ) # 2000 / 2 = 1000 | 5000/5 = 1000
+            new_text = textwrap.wrap( text, width=n, break_long_words=True, replace_whitespace=False )
+            return new_text
+    elif len(text) < 4000:
+        return text
+    elif len( text ) >= 4000:
+        k = ceil( len( text ) / 4000 )
+        n = int( len( text ) / int( k ) )
+        new_text = textwrap.wrap( text, width=n, break_long_words=True, replace_whitespace=False )
+        return new_text
+
+
 
 async def profile_viewer(message:types.Message, text, photo=None, markup=None):
+    message.bot['messages_in_loop'] = []
     if photo:
         # если есть фото, изменяем сообщение с фото
         if message.photo:
             media = InputMedia(media=photo)
             await message.edit_media( media=media )
-            message_callback = await message.edit_caption( caption=text, reply_markup=markup)
+            if len( text ) >= 1000:
+                logging.info( len( text ) )
+                new_text = textwrap.wrap( text, width=1000, break_long_words=True, replace_whitespace=False )
+                message_callback = await message.edit_caption(  caption=new_text[0] )
+                message.bot['messages_in_loop'].append( message_callback.message_id )
+                counter = 0
+                new_text2 = ' '.join( new_text[1:] )
+                if len( new_text2 ) < 4000:
+                    message_callback = await message.answer( text=new_text2, reply_markup=markup )
+                else:
+                    new_text_3 = textwrap.wrap( new_text2, width=4000, break_long_words=True, replace_whitespace=False )
+                    for mess in new_text_3:
+                        counter += 1
+                        if counter == len( new_text_3 ):
+                            message_callback = await message.answer( text=mess, reply_markup=markup )
+                        else:
+                            message_callback = await message.answer( text=mess )
+                            message.bot['messages_in_loop'].append( message_callback.message_id )
+            else:
+                message_callback = await message.answer_photo( photo=photo, caption=text, reply_markup=markup )
         else:
             media = InputMedia(media=photo)
             await message.delete()
-            message_callback = await message.answer_photo(photo=photo, caption=text, reply_markup=markup)
+            if len(text) >= 1000:
+                logging.info(len(text))
+                new_text = textwrap.wrap( text, width=1000, break_long_words=True, replace_whitespace=False )
+                message_callback = await message.answer_photo(photo=photo, caption=new_text[0])
+                message.bot['messages_in_loop'].append(message_callback.message_id)
+                counter = 0
+                new_text2 = ' '.join(new_text[1:])
+                if len(new_text2) < 4000:
+                    message_callback = await message.answer( text=new_text2, reply_markup=markup )
+                else:
+                    new_text_3 = textwrap.wrap( new_text2, width=4000, break_long_words=True, replace_whitespace=False )
+                    for mess in new_text_3:
+                        counter += 1
+                        if counter == len(new_text_3):
+                            message_callback = await message.answer( text=mess, reply_markup=markup )
+                        else:
+                            message_callback = await message.answer( text=mess)
+                            message.bot['messages_in_loop'].append(message_callback.message_id)
+            else:
+                message_callback = await message.answer_photo( photo=photo, caption=text, reply_markup=markup )
     elif photo is None:
         if message.photo:
             await message.delete()
-            message_callback = await message.answer(text=text, reply_markup=markup)
+            if len(text) > 4000:
+                k = ceil(len(text) / 4000)
+                n = int(len(text) / int(k))
+                new_text = textwrap.wrap( text, width=n, break_long_words=True, replace_whitespace=False)
+                count = 0
+                for text_2 in new_text:
+                    count += 1
+                    logging.info(f'count {count}')
+                    logging.info(f'len(new_text) {len(new_text)}')
+                    if count == len(new_text):
+                        message_callback = await message.answer( text=text_2, reply_markup=markup )
+                    else:
+                        message_callback = await message.answer( text=text_2)
+                        message.bot['messages_in_loop'].append( message_callback.message_id )
+
+            else:
+                message_callback = await message.answer(text=text, reply_markup=markup)
         else:
-            try:
-                message_callback = await message.edit_text(text=text, reply_markup=markup)
-            except MessageCantBeEdited as e:
-                await message.delete()
-                message_callback = await message.answer( text=text, reply_markup=markup )
-            except BadRequest as b:
-                await message.delete()
-                message_callback = await message.answer( text=text, reply_markup=markup )
+            if len( text ) >= 4000:
+                logging.info( len( text ) )
+                new_text = textwrap.wrap( text, width=4000, break_long_words=True, replace_whitespace=False )
+                counter = 0
+                for mess in new_text :
+                    try:
+                        if counter == 0:
+                            message_callback = await message.edit_text( text=mess )
+                            message.bot['messages_in_loop'].append( message_callback.message_id )
+                        else:
+                            message_callback = await message.answer( text=mess, reply_markup=markup )
+                        counter += 1
+                    except MessageCantBeEdited as e:
+                        await message.delete()
+                        message_callback = await message.answer( text=mess, reply_markup=markup )
+                    except BadRequest as b:
+                        await message.delete()
+                        message_callback = await message.answer( text=mess, reply_markup=markup )
+            else:
+                try:
+                    message_callback = await message.edit_text( text=text, reply_markup=markup )
+                except MessageCantBeEdited as e:
+                    await message.delete()
+                    message_callback = await message.answer( text=text, reply_markup=markup )
+                except BadRequest as b:
+                    await message.delete()
+                    message_callback = await message.answer( text=text, reply_markup=markup )
     else:
         logging.info(msg='------------Else---------------')
     if markup:
@@ -202,8 +300,9 @@ async def format_text_profile(anket, session, type_profile=None, reward=None, re
     age = calculateAge( anket['birthday'] )
     city = anket['city']
     last_time = anket['last_time']
+    tabu = anket['tabu']
+    practices = anket['practices']
     user_info = await select_user(session=session, user_id=user_id_anket)
-    moderation = user_info[0]['moderation']
     text=''
     if type_profile =='favorites_profile':
         text = f'ПОНРАВИЛИСЬ ВАМ\n\n'
@@ -213,11 +312,12 @@ async def format_text_profile(anket, session, type_profile=None, reward=None, re
         text = f'ВЗАИМНЫЙ ИНТЕРЕС\n\n'
     elif type_profile == 'not_interested_me':
         text = f'НЕ ПОНРАВИЛИСЬ ВАМ\n\n'
-    text += f'Имя: {name}\n'
-    text += f'Возраст: {age}\n'
+    text += f'Имя: {name}. Возраст: {age}\n'
     text += f'Город: {city}\n'
     correct_date = last_time.strftime("%d-%m-%Y")
-    text += f'Дата посещения: {correct_date}'
+    text += f'Последнее посещение: {correct_date}\n'
+    text += f'Желаемые практики: {practices}\n'
+    text += f'Табу: {tabu}\n'
     text += f'\n\nНомер анкеты: {id_anket}'
 
     return text, user_id_anket

@@ -16,6 +16,8 @@ class Users(Base):
     birthday = Column(Date)
     city = Column( String )
     about_my_self = Column(String)
+    practices = Column(String)
+    tabu = Column(String)
     partner_another_city = Column( Boolean )
     min_age = Column(Integer)
     max_age = Column(Integer)

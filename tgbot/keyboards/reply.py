@@ -20,9 +20,9 @@ async def moderation_main_menu_kb(admin_kb=None):
     kb = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     kb.insert(KeyboardButton(text='Верификация'))
     kb.insert(KeyboardButton(text='Жалобы'))
-    kb.insert(KeyboardButton(text='Наградить'))
-    kb.insert(KeyboardButton(text='Забрать награду'))
-    kb.insert(KeyboardButton(text='Разные ссылки'))
+    # kb.insert(KeyboardButton(text='Наградить'))
+    # kb.insert(KeyboardButton(text='Забрать награду'))
+    # kb.insert(KeyboardButton(text='Разные ссылки'))
     kb.insert(KeyboardButton(text='Поиск по ID телеграм'))
     if admin_kb:
         kb.insert( KeyboardButton( text='Назначить модератора' ) )

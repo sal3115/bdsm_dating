@@ -77,6 +77,7 @@ async def view_questionnaires(message:Union[types.Message, types.CallbackQuery],
         kb = await dating_keyboard(user_id=user_id_anket, page=page)
     photos = await select_first_photo( session=session_maker, user_id=user_id_anket )
     if len(photos)>0:
+        logging.info("---------фото")
         photo= photos[0]['photo_id']
         await profile_viewer(message=message, text=text, photo=photo, markup=kb)
     else:
@@ -192,6 +193,8 @@ async def processing_dating_keyboard(call:types.CallbackQuery, callback_data:dic
         await state.update_data(user_id=user_id, complaint_user_id = user_id_anket, page=page, type_profile=None)
     elif callback == 'following_anket':
         await view_questionnaires( message=call, page=page +1)
+    elif callback == 'back_anket':
+        await view_questionnaires( message=call, page=page - 1 )
     elif callback == 'profile':
         await view_questionnaires(message=call, page=page)
     await call.answer()
