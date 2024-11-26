@@ -299,7 +299,7 @@ async def dating_keyboard(user_id=0, page=0, type_profiles=None, url=None, call_
                                        callback_data=callback_data_type.new(callback='complain',
                                                                             user_id=user_id, page=page)))
 
-    markup.insert( InlineKeyboardButton( text='Назад',
+    markup.add( InlineKeyboardButton( text='Назад',
                                          callback_data=callback_data_type.new( callback='back_anket',
                                                                                user_id=user_id, page=page ) ) )
     markup.insert(InlineKeyboardButton(text='Следующая',

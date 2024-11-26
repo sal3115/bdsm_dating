@@ -92,24 +92,85 @@ async def delete_keyboard(message: Union[types.Message, types.CallbackQuery], cu
 #                 await message.answer(text=text, reply_markup=markup)
 #     message.bot['last_message_id'] = message.message_id
 
+async def text_separator(text, photo = False):
+    if photo:
+        if len(text) < 1000:
+            return [text]
+        elif len(text) >= 1000: #len(text) = 2000  |   len(text) = 5000
+            return_text = []
+            new_text = textwrap.wrap( text, width=1000, break_long_words=True, replace_whitespace=False )
+            new_text2 = ' '.join( new_text[1:] )
+            if len( new_text2 ) < 4000:
+                return new_text[0], new_text2
+            else:
+                new_text_3 = textwrap.wrap( new_text2, width=4000, break_long_words=True, replace_whitespace=False )
+                return_text.append(new_text[0])
+                for mess in new_text_3:
+                    return_text.append(mess)
+                return return_text
+    elif len(text) < 4000:
+        return text
+    elif len( text ) >= 4000:
+        new_text = textwrap.wrap( text, width=4000, break_long_words=True, replace_whitespace=False )
+        return new_text
+
 
 async def edit_message(message: Union[types.Message, types.CallbackQuery], text=None, markup=None, photo=None, video=None):
     if isinstance(message, types.CallbackQuery):
         message = message.message
-    if photo:
-        # если есть фото, изменяем сообщение с фото
+    if photo:  # если есть фото, изменяем сообщение с фото
         media = InputMedia(media=photo)
         if message.photo:
-            try:
-                await message.edit_media( media=media )
-                message_callback = await message.edit_caption( caption=text, reply_markup=markup)
-            except MessageCantBeEdited:
-                message_callback = await message.answer_photo(photo=photo, caption=text, reply_markup=markup)
-            except BadRequest:
-                message_callback = await message.answer_photo( photo=photo, caption=text, reply_markup=markup )
+            logging.info('---------------------------------------')
+            await message.edit_media( media=media )
+            new_text = await text_separator(text = text, photo=True)
+            logging.info(len(new_text))
+            if len(new_text) > 1:
+                counter = 0
+                for mess in new_text:
+                    try:
+                        if counter == 0:
+                            message_callback = await message.edit_caption( caption=mess)
+                        else:
+                            message_callback = await message.answer( text=mess, reply_markup=markup)
+                    except MessageCantBeEdited:
+                        message_callback = await message.answer_photo( photo=photo, caption=mess, reply_markup=markup )
+                    except BadRequest:
+                        message_callback = await message.answer_photo( photo=photo, caption=mess, reply_markup=markup )
+            else:
+                try:
+                    logging.info( '--------------------------------------1' )
+                    message_callback = await message.edit_caption( caption=new_text[0],reply_markup=markup )
+                except MessageCantBeEdited:
+                    logging.info( '--------------------------------------2' )
+
+                    message_callback = await message.answer_photo(photo=photo, caption=new_text[0], reply_markup=markup)
+                except BadRequest:
+                    logging.info( '--------------------------------------3' )
+
+                    message_callback = await message.answer_photo( photo=photo, caption=new_text[0], reply_markup=markup)
         else:
+            new_text = await text_separator(text = text, photo=True)
+            logging.info('--------------------------------------8')
             await message.delete()
-            message_callback = await message.answer_photo(photo=photo,caption=text, reply_markup=markup)
+            if len(new_text) > 1:
+                counter = 0
+                for mess in new_text:
+                    if counter == 0:
+                        logging.info( '--------------------------------------1' )
+                        message_callback = await message.answer_photo(photo=photo,caption=mess)
+                        counter += 1
+                    else:
+                        logging.info( '--------------------------------------2' )
+                        counter += 1
+                        if counter == len(new_text):
+                            logging.info( '--------------------------------------3' )
+                            message_callback = await message.answer(text=mess, reply_markup=markup)
+                        else:
+                            logging.info( '--------------------------------------4' )
+                            message_callback = await message.answer(text=mess)
+            else:
+                message_callback = await message.answer_photo( photo=photo, caption=new_text[0], reply_markup=markup )
     elif video:
         # если есть видео, изменяем сообщение с видео
         # await message.edit_caption( caption=text, reply_markup=markup  )
@@ -119,12 +180,8 @@ async def edit_message(message: Union[types.Message, types.CallbackQuery], text=
     else:
         # если нет ни фото, ни видео, изменяем сообщение без медиа
         try:
-            if (not message.video) and (not message.video_note):
-                await message.delete()
-                message_callback = await message.answer( text=text, reply_markup=markup )
-            else:
-                await message.delete()
-                message_callback = await message.answer(text=text, reply_markup=markup)
+            await message.delete()
+            message_callback = await message.answer(text=text, reply_markup=markup)
         except MessageCantBeEdited:
             message_callback = await message.answer(text=text, reply_markup=markup)
         except BadRequest:
@@ -137,27 +194,11 @@ async def edit_message(message: Union[types.Message, types.CallbackQuery], text=
                     message_callback = await message.answer(text=text, reply_markup=markup)
                 except MessageToDeleteNotFound:
                     message_callback = await message.answer(text=text, reply_markup=markup)
-
     if markup:
         if 'inline_keyboard' in markup:
             message.bot['last_message_id'] = message_callback.message_id
 
-async def text_separator(text, photo = False):
-    if photo:
-        if len(text) < 1000:
-            return text
-        elif len(text) >= 1000: #len(text) = 2000  |   len(text) = 5000
-            k = ceil( len( text ) / 1000 ) #2000/1000 = 2 |  5000/ 1000
-            n = int( len( text ) / int( k ) ) # 2000 / 2 = 1000 | 5000/5 = 1000
-            new_text = textwrap.wrap( text, width=n, break_long_words=True, replace_whitespace=False )
-            return new_text
-    elif len(text) < 4000:
-        return text
-    elif len( text ) >= 4000:
-        k = ceil( len( text ) / 4000 )
-        n = int( len( text ) / int( k ) )
-        new_text = textwrap.wrap( text, width=n, break_long_words=True, replace_whitespace=False )
-        return new_text
+
 
 
 
@@ -187,7 +228,7 @@ async def profile_viewer(message:types.Message, text, photo=None, markup=None):
                             message_callback = await message.answer( text=mess )
                             message.bot['messages_in_loop'].append( message_callback.message_id )
             else:
-                message_callback = await message.answer_photo( photo=photo, caption=text, reply_markup=markup )
+                message_callback = await message.edit_caption( caption=text, reply_markup=markup )
         else:
             media = InputMedia(media=photo)
             await message.delete()
@@ -215,9 +256,7 @@ async def profile_viewer(message:types.Message, text, photo=None, markup=None):
         if message.photo:
             await message.delete()
             if len(text) > 4000:
-                k = ceil(len(text) / 4000)
-                n = int(len(text) / int(k))
-                new_text = textwrap.wrap( text, width=n, break_long_words=True, replace_whitespace=False)
+                new_text = textwrap.wrap( text, width=4000, break_long_words=True, replace_whitespace=False)
                 count = 0
                 for text_2 in new_text:
                     count += 1
