@@ -5,6 +5,7 @@ from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import CommandStart
 from aiogram.types import MediaGroup, InputMedia
+from aiogram.utils import exceptions
 
 from tgbot.handlers.edit_profile import first_edit_profile
 from tgbot.keyboards.inline import dating_keyboard, dating_keyboard_cb, my_profile_kb, my_profile_cd, scrolling_photos, \
@@ -68,20 +69,25 @@ async def view_questionnaires(message:Union[types.Message, types.CallbackQuery],
                                                          session=session_maker )
         kb = await dating_keyboard( user_id=user_id_anket, page=page, type_profiles='not_interested_me' )
     elif type_profile == 'mutual_interest':
-        user_name = anket['username']
-        user_link = f'https://t.me/{user_name}'
         text, user_id_anket = await format_text_profile(anket=anket, type_profile='mutual_interest', session=session_maker)
+        try:
+            check_user_id = await message.bot.get_chat_member_count(user_id_anket)
+            user_link = f'tg://user?id={user_id_anket}'
+        except exceptions.ChatNotFound:
+            user_name = anket['username']
+            if user_name is None:
+                user_link = None
+            else:
+                user_link = f'https://t.me/{user_name}'
         kb = await dating_keyboard(user_id=user_id_anket, page=page, type_profiles='mutual_interest', url=user_link)
     else:
         text, user_id_anket = await format_text_profile( anket=anket, session=session_maker )
         kb = await dating_keyboard(user_id=user_id_anket, page=page)
     photos = await select_first_photo( session=session_maker, user_id=user_id_anket )
     if len(photos)>0:
-        logging.info("---------фото")
         photo= photos[0]['photo_id']
         await profile_viewer(message=message, text=text, photo=photo, markup=kb)
     else:
-        logging.info("---------func 2")
         await profile_viewer(message=message, text=text, markup=kb)
 
 
@@ -122,7 +128,6 @@ async def processing_dating_keyboard(call:types.CallbackQuery, callback_data:dic
     user_id_anket = callback_data['user_id']
     page = int(callback_data['page'])
     user_id = call.from_user.id
-    logging.info(['______procising user_id',user_id])
     session_maker = call.bot.data['session_maker']
     user_anket = await select_user(session=session_maker, user_id=user_id_anket)
     kb = await dating_keyboard( user_id=user_id_anket, page=page )
@@ -148,7 +153,6 @@ async def processing_dating_keyboard(call:types.CallbackQuery, callback_data:dic
             check_interest = await select_check_interest(session=session_maker, user_id=user_id, partner_id=user_id_anket)
             if len(check_interest) == 0:
                 check_mutual_like = await select_check_mutual_interest(session=session_maker, user_id=user_id, partner_id=user_id_anket)
-                logging.info(check_mutual_like)
                 if len(check_mutual_like) > 0:
                     user_name = user_anket[0]['username']
                     user_link = f'https://t.me/{user_name}'
@@ -164,7 +168,7 @@ async def processing_dating_keyboard(call:types.CallbackQuery, callback_data:dic
                         pass
                 else:
                     await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
-                    await view_questionnaires( message=call, page=page + 1 )
+                    await view_questionnaires( message=call, page=page )
                     try:
                         text = 'Здравствуйте. Одному из пользователей понравилась ваша анкета⚡️. Зайдите в раздел ' \
                                '«❤️Изранное», «Интересуются мной» чтобы узнать кто это👀. '
@@ -182,7 +186,7 @@ async def processing_dating_keyboard(call:types.CallbackQuery, callback_data:dic
                 return
             else:
                 await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=False )
-                await view_questionnaires( message=call, page=page + 1 )
+                await view_questionnaires( message=call, page=page  )
         else:
             await call.message.delete()
     elif callback == 'complain':
@@ -237,6 +241,11 @@ async def no_moderation_user_answer(message:types.Message):
     text = 'Вы не прошли модерацию, пожалуйста подождите'
     await edit_message(message=message, text=text)
 
+async def block_user(message: types.Message):
+    text = 'Вы заблокированы для утонения обратитесь в поддержку'
+    kb = await main_menu_kb(status_user='block_user')
+    await edit_message(message=message, text=text, markup = kb )
+
 def main_menu_handler(dp:Dispatcher):
     dp.register_message_handler(view_questionnaires, text='Анкеты',is_user = True, check_user_in_moderation=True)
     dp.register_message_handler(no_moderation_user_answer, text='Анкеты',is_user = True)
@@ -252,7 +261,9 @@ def main_menu_handler(dp:Dispatcher):
     dp.register_callback_query_handler(processing_dating_keyboard, dating_keyboard_cb.filter())
     # dp.register_message_handler(blocking_messages, content_types=types.ContentType.ANY)
     #Ловим нажатие на кнопку Полезные советы
-    dp.register_message_handler(support_func, text='🛠Тех. поддержка',is_user = True)
+    dp.register_message_handler(support_func, text='Поддержка',is_user = True)
 
-    dp.register_message_handler( support_func, text='🛠Тех. поддержка', is_user_exit=True )
-
+    dp.register_message_handler( support_func, text='Поддержка', is_user_exit=True )
+    #Заблокированый пользователь
+    dp.register_message_handler( support_func, text='Поддержка', is_user_block=True )
+    dp.register_message_handler( block_user, is_user_block=True )

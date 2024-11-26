@@ -8,11 +8,12 @@ async def main_menu_kb(status_user=None):
         kb.insert(KeyboardButton(text='Лайки'))
         kb.insert(KeyboardButton(text='Изменить анкету'))
     if status_user is None or status_user == 'block_user':
-        kb.insert(KeyboardButton(text='Оформить подписку'))
+        kb.insert(KeyboardButton(text='Поддержка'))
     if status_user == 'delete_user' or status_user == 'exit_user':
         kb.insert(KeyboardButton(text='Восстановить аккаунт'))
     else:
-        kb.insert(KeyboardButton(text='Скрыть/показать анкету'))
+        if status_user != 'block_user':
+            kb.insert(KeyboardButton(text='Скрыть/показать анкету'))
     return kb
 
 

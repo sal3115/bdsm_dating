@@ -12,11 +12,11 @@ from tgbot.keyboards.inline import favorite_profile_kb, interesting_cb, \
 from tgbot.misc.states import ComplaintsUser
 from tgbot.models.sql_request import select_user_profile_like, select_photo, select_user, insert_like_dis, \
      delete_reaction
-from tgbot.services.auxiliary_functions import edit_message
+from tgbot.services.auxiliary_functions import edit_message, check_like_dislike
 
 
 async def favourites_profile_no_paid(message: types.Message):
-    text = 'Для просмотра данного раздела оформите подписку'
+    text = 'Для просмотра данного раздела оформите подписку\nИзменить анкету ➡️ Оформить подписку'
     await edit_message(message=message, text=text)
 
 async def favourites_profile(message:types.Message, last_message_id=None):
@@ -62,6 +62,15 @@ async def favorites_profile_cb(call: types.CallbackQuery, callback_data:dict):
     elif callback == 'back':
         await first_page(message=call)
 
+async def favorites_profile_cb_not_paid(call: types.CallbackQuery, callback_data:dict):
+    callback = callback_data['callback']
+    user_id_anket = callback_data['user_id']
+    if callback == 'mutual_interest':
+        await view_questionnaires(message=call, type_profile='mutual_interest')
+    else:
+        text = 'Для просмотра данного раздела оформите подписку\nИзменить анкету ➡️ Оформить подписку'
+        kb = await favorite_profile_kb( user_id=user_id_anket, page=0 )
+        await edit_message(message=call, text=text, markup=kb)
 
 async def processing_favourites_keyboard(call:types.CallbackQuery, callback_data:dict):
     callback = callback_data['callback']
@@ -232,7 +241,6 @@ async def scrolling_photo_mutual_interest_cb(call: types.CallbackQuery, callback
     elif callback == 'back':
         await view_questionnaires(message=call, page=page, type_profile='mutual_interest')
 
-
 async def processing_mutual_interest_keyboard(call:types.CallbackQuery, callback_data:dict, state:FSMContext=None):
     callback = callback_data['callback']
     user_id_anket = callback_data['user_id']
@@ -257,11 +265,19 @@ async def processing_mutual_interest_keyboard(call:types.CallbackQuery, callback
     elif callback == 'more_photos':
         await scrolling_photo_func(call=call, user_id_anket=user_id_anket, page=page, type_profiles='mutual_interest')
     elif callback == 'interesting':
-        await view_questionnaires(message=call, page=page+1, type_profile='mutual_interest')
-        await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
+        check_interesting = await check_like_dislike(session=session_maker, user_id=user_id, partner_user_id=user_id_anket)
+        if check_interesting:
+            await view_questionnaires(message=call, page=page+1, type_profile='mutual_interest')
+            await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
+        else:
+            await call.message.delete()
     elif callback == 'dont_show':
-        await view_questionnaires( message=call, page=page + 1, type_profile='mutual_interest' )
-        await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=False )
+        check_interesting = await check_like_dislike( session=session_maker, user_id=user_id, partner_user_id=user_id_anket )
+        if check_interesting:
+            await view_questionnaires( message=call, page=page + 1, type_profile='mutual_interest' )
+            await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=False )
+        else:
+            await call.message.delete()
     elif callback == 'profile':
         await view_questionnaires( message=call, page=page, type_profile='mutual_interest' )
     elif callback == 'following_anket':
@@ -276,16 +292,17 @@ async def processing_mutual_interest_keyboard(call:types.CallbackQuery, callback
 
 
 def favorites_handler(dp):
-    dp.register_message_handler(favourites_profile, text='Лайки',is_user = True, is_paid = True, check_user_in_moderation=True)
-    dp.register_message_handler(favourites_profile_no_paid, text='Лайки',is_user = True)
-    dp.register_callback_query_handler(favorites_profile_cb, interesting_cb.filter())
+    # dp.register_message_handler(favourites_profile, text='Лайки',is_user = True, is_paid = True, check_user_in_moderation=True)
+    dp.register_message_handler(favourites_profile, text='Лайки',is_user = True)
+    dp.register_callback_query_handler(favorites_profile_cb, interesting_cb.filter(), is_paid = True, check_user_in_moderation=True)
+    dp.register_callback_query_handler(favorites_profile_cb_not_paid, interesting_cb.filter())
     dp.register_callback_query_handler(processing_favourites_keyboard, dating_keyboard_favorites_cb.filter())
     dp.register_callback_query_handler(scrolling_photo_favorites_cb, scrolling_photos_fav_cb.filter())
     #intersting me
-    dp.register_callback_query_handler(processing_interested_me_keyboard,dating_keyboard_interested_me_cb.filter())
+    dp.register_callback_query_handler(processing_interested_me_keyboard,dating_keyboard_interested_me_cb.filter(), is_paid = True, check_user_in_moderation=True)
     dp.register_callback_query_handler(scrolling_photo_interested_me_cb,scrolling_photos_inter_me_cb.filter())
     #not interested me
-    dp.register_callback_query_handler(processing_not_interested_me_keyboard, dating_keyboard_not_interested_me_cb.filter())
+    dp.register_callback_query_handler(processing_not_interested_me_keyboard, dating_keyboard_not_interested_me_cb.filter(), is_paid = True, check_user_in_moderation=True)
     dp.register_callback_query_handler(scrolling_photo_not_interested_me_cb, scrolling_photos_not_inter_me_cb.filter())
     #mutual_interest
     dp.register_callback_query_handler(processing_mutual_interest_keyboard, dating_keyboard_mutual_interest_cb.filter())

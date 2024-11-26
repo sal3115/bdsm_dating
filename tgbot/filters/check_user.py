@@ -31,22 +31,22 @@ class CheckUserRole(BoundFilter):
 
 
 class CheckUserDelete(BoundFilter):
-    key = 'is_user_delete'
+    key = 'is_user_block'
 
-    def __init__(self, is_user_delete: typing.Optional[bool] = None):
-        self.is_user_delete = is_user_delete
+    def __init__(self, is_user_block: typing.Optional[bool] = None):
+        self.is_user_block = is_user_block
 
     async def check(self, obj):
-        if self.is_user_delete is None:
+        if self.is_user_block is None:
             return False
         session_maker = obj.bot.get('session_maker')
         user_id = obj.from_user.id
         check_user_id = await select_user(session_maker, user_id)
         if len(check_user_id) > 0:
-            if check_user_id[0]['status'] == 'delete_user':
+            if check_user_id[0]['status'] == 'block_user':
                 return user_id == check_user_id[0]['user_id']
         else:
-            return False == self.is_user_delete
+            return False == self.is_user_block
 
 class CheckUserExit(BoundFilter):
     key = 'is_user_exit'
@@ -120,9 +120,7 @@ class CheckPaid(BoundFilter):
         user_id = obj.from_user.id
         check_user_id = await select_paid(session_maker, user_id)
         if len(check_user_id) > 0:
-            logging.info( f'len ----------- {check_user_id[0]}' )
             today = datetime.now().date()
-            logging.info( f'today ----------- {type(today), today}' )
             if check_user_id[0]['date_before'] >= datetime.now().date():
                 return user_id == check_user_id[0]['user_id']
             else:

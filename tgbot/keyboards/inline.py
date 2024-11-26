@@ -240,6 +240,7 @@ dating_keyboard_mutual_interest_cb= CallbackData('dkmicb', 'callback', 'user_id'
 dating_keyboard_not_interested_me_cb= CallbackData('dknimcb', 'callback', 'user_id', 'page')
 
 async def dating_keyboard(user_id=0, page=0, type_profiles=None, url=None, call_back=None):
+    logging.info( url )
     if type_profiles == 'favorites_profile':
         callback_data_type = dating_keyboard_favorites_cb
     elif type_profiles == 'interested_me':
@@ -269,7 +270,8 @@ async def dating_keyboard(user_id=0, page=0, type_profiles=None, url=None, call_
                                        callback_data=callback_data_type.new(callback='more_photos',
                                                                             user_id=user_id, page=page)))
     if type_profiles == 'mutual_interest':
-        markup.insert(InlineKeyboardButton(text = 'Написать', url=url,callback_data=callback_data_type.new(callback='write',
+        if url:
+            markup.insert(InlineKeyboardButton(text = 'Написать', url=url,callback_data=callback_data_type.new(callback='write',
                                                                                                    user_id=user_id, page=page)))
     if type_profiles is None or type_profiles == 'interested_me' or type_profiles == 'mutual_interest':
         if call_back == 'interesting':
@@ -316,7 +318,6 @@ async def favorite_profile_kb(user_id, page):
     markup.add(InlineKeyboardButton(text='Не понравились мне', callback_data=interesting_cb.new(callback='not_interested_me', user_id=user_id, page=page)))
     markup.add(InlineKeyboardButton(text='Интересуются мной', callback_data=interesting_cb.new(callback='interested_me', user_id=user_id, page=page)))
     markup.add(InlineKeyboardButton(text='Взаимный интерес', callback_data=interesting_cb.new(callback='mutual_interest', user_id=user_id, page=page)))
-    markup.add(InlineKeyboardButton(text='Назад', callback_data=interesting_cb.new(callback='back', user_id=user_id, page=page)))
     return markup
 
 

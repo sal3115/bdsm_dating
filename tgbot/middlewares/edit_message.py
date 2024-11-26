@@ -13,8 +13,12 @@ class ReplaceOrDeleteInlineKeyboard(BaseMiddleware):
         if 'callback_query' in update:
             return
         try:
+            logging.info(update)
             last_message_id = int(update.bot["last_message_id"])
-            await update.bot.delete_message(chat_id=update.message.chat.id, message_id=last_message_id)
+            if 'pre_checkout_query' in update:
+                await update.bot.delete_message( chat_id=update.pre_checkout_query.from_user.id, message_id=last_message_id )
+            else:
+                await update.bot.delete_message(chat_id=update.message.chat.id, message_id=last_message_id)
         except KeyError:
             pass
         except exceptions.MessageToDeleteNotFound:
@@ -23,7 +27,9 @@ class ReplaceOrDeleteInlineKeyboard(BaseMiddleware):
 
 class ReplaceOrDeleteLastMessage(BaseMiddleware):
     async def on_pre_process_update(self, update: Union[types.Update, types.CallbackQuery], data: dict):
-        if 'callback_query' in update:
+        if 'pre_checkout_query' in update:
+            return
+        elif 'callback_query' in update:
             update = update.callback_query
         try:
             logging.info(update)

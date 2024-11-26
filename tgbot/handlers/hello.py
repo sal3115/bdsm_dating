@@ -5,9 +5,9 @@ from aiogram.types import ContentType, InputFile
 from tgbot.filters.check_user import CheckUserRole
 from tgbot.keyboards.inline import func_kb_look_pravila, func_kb_acsept_pravila, func_kb_acsept_personal_data, \
     func_kb_go_to_anketa, func_kb_davayte
-from tgbot.keyboards.reply import none_kb
+from tgbot.keyboards.reply import none_kb, main_menu_kb
 from tgbot.misc.states import FSM_hello
-from tgbot.services.auxiliary_functions import delete_keyboard
+from tgbot.services.auxiliary_functions import delete_keyboard, edit_message
 from tgbot.services.photo_and_text import  text_dict
 
 
@@ -42,5 +42,7 @@ async def start_anketirovanie(callback: types.CallbackQuery, state: FSMContext=N
 def register_hello(dp: Dispatcher):
     dp.register_message_handler(get_start, CheckUserRole(False), commands='start')
     dp.register_callback_query_handler(community_rules, text='after_start')
+
+
     # dp.register_callback_query_handler(start_anketirovanie, text='acseptPersonalData')
 

@@ -9,7 +9,7 @@ from aiogram import types
 from aiogram.types import InputMedia, InputMediaVideo
 from aiogram.utils.exceptions import MessageCantBeEdited, BadRequest, MessageToEditNotFound, MessageToDeleteNotFound
 
-from tgbot.models.sql_request import select_photo, select_user
+from tgbot.models.sql_request import select_photo, select_user, select_check_mutual_interest
 from tgbot.services.calculate_age import calculateAge
 
 
@@ -387,4 +387,10 @@ async def add_photo_func(photo=None, album: List[types.Message]= None):
         return data_photo
 
 
-
+async def check_like_dislike(session, user_id, partner_user_id):
+    check_mutual_like = await select_check_mutual_interest( session=session, user_id=user_id,
+                                                            partner_id=partner_user_id )
+    if len(check_mutual_like)>=1:
+        return False
+    else:
+        return True

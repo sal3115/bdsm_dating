@@ -55,6 +55,6 @@ text_dict = {
 
 
 text_main_menu = {
-    'support': '''Поддержка''',
+    'support': '''Для получения поддержки обратитесь https://t.me/john_smith1113''',
     'useful_tips': '''Доп. инфа'''
 }
