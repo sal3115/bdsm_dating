@@ -17,6 +17,8 @@ class Users(Base):
     city = Column( String )
     about_my_self = Column(String)
     practices = Column(String)
+    online_practice = Column(Boolean)
+    gender_partner = Column(String, default='woman')
     tabu = Column(String)
     partner_another_city = Column( Boolean )
     min_age = Column(Integer)

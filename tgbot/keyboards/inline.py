@@ -15,7 +15,9 @@ async def func_kb_gender():
     kb = InlineKeyboardMarkup()
     but_1 = InlineKeyboardButton(text='👨Мужчина', callback_data=f'men')
     but_2 = InlineKeyboardButton(text='👩Женщина', callback_data=f'women')
-    kb.add(but_1).add(but_2)
+    but_3 = InlineKeyboardButton(text='⬅️Назад', callback_data=f'back')
+
+    kb.add(but_1).add(but_2).add(but_3)
     return kb
 
 

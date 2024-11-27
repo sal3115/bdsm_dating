@@ -33,6 +33,8 @@ async def insert_users(session, params, value = None):
     tabu = params['tabu'],
     practices = params['practice'],
     partner_another_city =params['partner_another_city'],
+    online_practice = params['online_practice'],
+    gender_partner = params['gender_partner'],
     min_age = params['min_age'],
     max_age = params['max_age'],
     moderation = False,
@@ -150,6 +152,7 @@ async def select_user_anketa(session, user_id):
             partner_another_city = user.partner_another_city
             min_age = user.min_age
             max_age = user.max_age
+            online_practice = user.online_practice
 
             today = datetime.datetime.today()
             min_birthday = today - datetime.timedelta( days=(365 * max_age) )

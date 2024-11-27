@@ -16,8 +16,9 @@ class FSM_hello(StatesGroup):
     min_age = State()
     max_age= State()
     another_city = State()
+    online_practice = State()
     finish = State()
-
+    woman_woman = State()
 
 
 

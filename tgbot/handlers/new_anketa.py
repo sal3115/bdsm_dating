@@ -30,8 +30,8 @@ async def your_name(arg: Union[Message, CallbackQuery], state: FSMContext):
     await FSM_hello.your_name.set()
     user_name = message.chat.username
     user_id = message.chat.id
-    await state.update_data(user_id=user_id, user_name=user_name, photo=None, video=None, guarantor=None, partner_another_city=False,
-                            partner_another_town=False, min_age=None, max_age=None)
+    await state.update_data(user_id=user_id, user_name=user_name, photo=None, partner_another_city=False,
+                             min_age=None, max_age=None, gender_partner = 'woman')
     data = await state.get_data()
     logging.info( msg=[data, await state.get_state()])
 # ловим ответ про имя спрашиваем пол
@@ -49,26 +49,73 @@ async def name_gender(message: Message, state: FSMContext):
     data = await state.get_data()
     logging.info( msg=[data, await state.get_state()])
 # ловим ответ про пол спрашиваем дату рождения
-async def gender_date_of_birth(arg: Union[Message, CallbackQuery], state: FSMContext):
+async def gender_date_of_birth_or_woman_woman(arg: Union[Message, CallbackQuery], state: FSMContext):
+    data = await state.get_data()
     if isinstance(arg, types.CallbackQuery):
         message = arg.message
     else:
         message = arg
-    text = text_dict['qw_7']
+    kb = await func_kb_back_2()
+    if message.text == '🔙Вернуться НАЗАД':
+        if 'gender_partner' in data:
+            await FSM_hello.woman_woman.set()
+            text = text_dict['qw_6_1']
+            kb = await func_kb_gender()
+            await message.answer( text=text, reply_markup=kb )
+        else:
+            await FSM_hello.your_date_of_birth.set()
+    if message.reply_markup:
+        await message.edit_reply_markup()
+        gender = arg.data
+        if gender == 'men':
+            if 'gender_partner' in data:
+                await state.update_data( gender_partner='woman' )
+            await FSM_hello.your_date_of_birth.set()
+            text = text_dict['qw_7']
+            await state.update_data( gender=gender )
+            await message.answer( text=text, reply_markup=kb )
+        elif gender == 'woman':
+            await FSM_hello.woman_woman.set()
+            text =text_dict['qw_6_1']
+            kb = await func_kb_gender()
+            await state.update_data( gender=gender )
+            await message.answer( text=text, reply_markup=kb )
+        elif gender == 'back':
+            await FSM_hello.your_name.set()
+            await your_name(arg=arg, state=state)
+        await arg.answer()
+
+    else:
+        await message.delete()
+    logging.info( msg=[data, await state.get_state()])
+
+async def woman_woman_date_of_birth(arg: Union[Message, CallbackQuery], state: FSMContext):
+    if isinstance(arg, types.CallbackQuery):
+        message = arg.message
+    else:
+        message = arg
     kb = await func_kb_back_2()
     if message.text == '🔙Вернуться НАЗАД':
         await FSM_hello.your_date_of_birth.set()
     if message.reply_markup:
-        await message.edit_reply_markup()
-        gender = arg.data
-        await state.update_data( gender=gender )
-        await arg.answer()
-        await FSM_hello.your_date_of_birth.set()
+        gender_partner = arg.data
+        if gender_partner == 'back':
+            await arg.answer()
+            await FSM_hello.your_gender.set()
+            await gender_date_of_birth_or_woman_woman(arg=arg, state=state)
+        else:
+            await message.edit_reply_markup()
+            await state.update_data( gender_partner=gender_partner )
+            await FSM_hello.your_date_of_birth.set()
+            text = text_dict['qw_7']
+            await message.answer( text=text, reply_markup=kb )
+            await arg.answer()
     else:
         await message.delete()
-    await message.answer( text=text, reply_markup=kb )
     data = await state.get_data()
     logging.info( msg=[data, await state.get_state()])
+
+
 #ловим ответ про дату рождения запрос города
 async def birth_city(message: Message, state: FSMContext):
     text = text_dict['qw_9']
@@ -263,8 +310,40 @@ async def max_age_another_city(message: Message, state:FSMContext):
         await message.answer( text=text, reply_markup=kb )
         await FSM_hello.another_city.set()
     logging.info( msg=[data, await state.get_state()])
-#принимаем максимальный подходящий возраст  завершающий этап
-async def another_city_finish(message: Union[types.Message, types.CallbackQuery], state:FSMContext,
+
+
+#принимаем анкеты других городов, запрос онлайн практик
+
+async def another_city_online(message: Union[types.Message, types.CallbackQuery], state:FSMContext,
+                              callback_data: dict = None, album: List[types.Message]= None):
+    text = text_dict['qw_17_2']
+    kb = await yes_no_button()
+    if isinstance(message, types.Message):
+        if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
+            await message.answer( text=text)
+            await FSM_hello.online_practice.set()
+            data = await state.get_data()
+            logging.info( msg=[data, await state.get_state()])
+        else:
+            await message.delete()
+            return
+    else:
+        await message.answer()
+        message = message.message
+        answer = callback_data['callback']
+        logging.info(answer)
+        if answer == 'yes':
+            answer = True
+        else:
+            answer = False
+        await state.update_data(partner_another_city=answer)
+        await message.answer( text=text, reply_markup=kb )
+        await FSM_hello.online_practice.set()
+    data = await state.get_data()
+    logging.info( msg=[data, await state.get_state()] )
+
+#принимаем онлайн практики городов  завершающий этап
+async def online_finish(message: Union[types.Message, types.CallbackQuery], state:FSMContext,
                               callback_data: dict = None, album: List[types.Message]= None):
     text = text_dict['qw_22']
     if isinstance(message, types.Message):
@@ -273,6 +352,9 @@ async def another_city_finish(message: Union[types.Message, types.CallbackQuery]
             await FSM_hello.finish.set()
             data = await state.get_data()
             logging.info( msg=[data, await state.get_state()])
+        else:
+            await message.delete()
+            return
     else:
         await message.answer()
         message = message.message
@@ -281,7 +363,7 @@ async def another_city_finish(message: Union[types.Message, types.CallbackQuery]
             answer = True
         else:
             answer = False
-        await state.update_data(another_city=answer)
+        await state.update_data(online_practice=answer)
         data = await state.get_data()
         session = message.bot.data['session_maker']
         await insert_users(session, data)
@@ -308,10 +390,13 @@ async def another_city_finish(message: Union[types.Message, types.CallbackQuery]
         await message.answer( text=text, reply_markup=kb )
 async def back_button(message: Message, state: FSMContext):
     curent_state = await state.get_state()
+    logging.info(curent_state)
+    data = await state.get_data()
     levels = {
         "FSM_hello:your_gender": your_name,
-        "FSM_hello:your_date_of_birth": name_gender,
-        "FSM_hello:your_city": gender_date_of_birth,
+        "FSM_hello:your_date_of_birth": gender_date_of_birth_or_woman_woman if 'gender_partner' in data else name_gender,
+        "FSM_hello:your_city": gender_date_of_birth_or_woman_woman,
+        "FSM_hello:woman_woman": name_gender,
         "FSM_hello:your_position": birth_city,
         "FSM_hello:partner_position": city_position,
         "FSM_hello:your_practice": position_partner_position,
@@ -321,7 +406,8 @@ async def back_button(message: Message, state: FSMContext):
         "FSM_hello:min_age": about_me_photo,
         "FSM_hello:max_age": photo_min_age,
         "FSM_hello:another_city": min_age_max_age,
-        "FSM_hello:finish": max_age_another_city,
+        "FSM_hello:online_practice": max_age_another_city,
+        "FSM_hello:finish": another_city_online,
     }
     # Забираем нужную функцию для выбранного уровня
     current_level_function = levels[curent_state]
@@ -358,8 +444,10 @@ def register_anketa(dp:Dispatcher):
     dp.register_message_handler(back_button, text='🔙Вернуться НАЗАД', state=FSM_hello )
     # dp.register_message_handler(next_button, text='Пропустить🔜', state=FSM_hello )
     dp.register_callback_query_handler( your_name, text='acseptPersonalData')
+    dp.register_callback_query_handler( your_name, state=FSM_hello.your_name, text = 'back')
     dp.register_message_handler( name_gender, state=FSM_hello.your_name )
-    dp.register_callback_query_handler( gender_date_of_birth, state=FSM_hello.your_gender)
+    dp.register_callback_query_handler( gender_date_of_birth_or_woman_woman, state=FSM_hello.your_gender)
+    dp.register_callback_query_handler(woman_woman_date_of_birth, state=FSM_hello.woman_woman)
     dp.register_message_handler( birth_city,  state=FSM_hello.your_date_of_birth )
     dp.register_message_handler( city_position, state=FSM_hello.your_city )
     dp.register_message_handler( position_partner_position, state=FSM_hello.your_position  )
@@ -372,8 +460,9 @@ def register_anketa(dp:Dispatcher):
     dp.register_message_handler( photo_min_age, state=FSM_hello.your_photo, content_types=types.ContentType.ANY)
     dp.register_message_handler( min_age_max_age, state=FSM_hello.min_age)
     dp.register_message_handler( max_age_another_city, state=FSM_hello.max_age)
-    dp.register_callback_query_handler( another_city_finish, yes_no_cb.filter(), state=FSM_hello.another_city)
-    dp.register_message_handler( another_city_finish, state=FSM_hello.another_city)
+    dp.register_callback_query_handler( another_city_online, yes_no_cb.filter(), state=FSM_hello.another_city)
+    dp.register_callback_query_handler(online_finish, yes_no_cb.filter(), state= FSM_hello.online_practice)
+    dp.register_message_handler( online_finish, state=FSM_hello.online_practice)
 
 
 
