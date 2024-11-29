@@ -6,7 +6,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.utils.exceptions import MessageNotModified
 
 from tgbot.keyboards.inline import my_profile_new_cd, edit_profile_cd, edit_profile_kb, my_photos_cd, cancel_cd, \
-    cancel_inline_kb, edit_my_photos_kb, yes_no_kb, yes_no_cb_new
+    cancel_inline_kb, edit_my_photos_kb, yes_no_kb, yes_no_cb_new, interaction_format_button, interaction_format_cb
 from tgbot.keyboards.reply import cancel_kb, main_menu_kb
 from tgbot.misc.states import EditOther
 from tgbot.models.sql_request import select_user, update_user_info, select_rejection_user, update_first_photo, \
@@ -261,7 +261,7 @@ async def edit_city_state(message: Union[types.Message, types.CallbackQuery], st
         await edit_message( message=message, text=text, markup=kb )
     else:
         text = 'Напиши город русскими буквами'
-        kb = await yes_no_kb()
+        kb = await cancel_inline_kb()
         await edit_message( message=message, text=text, markup=kb )
         return
 async def edit_city_confirm(message: Union[types.Message, types.CallbackQuery], state:FSMContext, callback_data:dict):
@@ -458,33 +458,31 @@ async def edit_another_city_confirm(message: Union[types.Message, types.Callback
 
 
 # edit_online_practice
-async def edit_online_practice(arg: Union[types.Message, types.CallbackQuery], state: FSMContext = None):
+async def edit_interaction_format(arg: Union[types.Message, types.CallbackQuery], state: FSMContext = None):
     if isinstance( arg, types.CallbackQuery ):
         arg = arg.message
-    text = f'Хочешь ли ты онлайн практики?'
-    kb = await yes_no_kb()
+    text = f'Какой формат ты предпочитаешь?'
+    kb = await interaction_format_button()
     await edit_message( message=arg, text=text, markup=kb )
-    await EditOther.online_practice_state.set()
+    await EditOther.interaction_format_state.set()
 
 
-async def edit_online_practice_confirm(message: Union[types.Message, types.CallbackQuery], state: FSMContext,
+async def edit_interaction_format_confirm(message: Union[types.Message, types.CallbackQuery], state: FSMContext,
                                     callback_data: dict):
+    logging.info('edit_interaction_format_confirm')
     if isinstance( message, types.CallbackQuery ):
         message = message.message
     callback = callback_data['callback']
     user_id = message.chat.id
     session = message.bot.data['session_maker']
-    if callback == 'yes':
-        await update_user_info( session=session, user_id=user_id, online_practice=True )
-        text = f'Установили что ты не против онлайн практик '
-        kb = await edit_profile_kb()
-    elif callback == 'no':
-        await update_user_info( session=session, user_id=user_id, online_practice=False )
-        text = f'Установили что ты против онлайн практик '
-        kb = await edit_profile_kb()
+    await update_user_info( session=session, user_id=user_id, interaction_format=callback )
+    if callback == 'online':
+        text = f'Теперь будет показываться только онлайн анкеты'
+    elif callback == 'offline':
+        text = f'Теперь будет показываться только офлайн анкеты '
     else:
-        text = 'что-то пошло не так'
-        kb = await edit_profile_kb()
+        text = f'Теперь будет показываться офлайн и онлайн анкеты  '
+    kb = await edit_profile_kb()
     await edit_message( message=message, text=text, markup=kb )
     await state.finish()
 
@@ -558,8 +556,8 @@ async def edit_profile_kb_process(callback:types.CallbackQuery, callback_data:di
         await edit_birthday(arg=callback)
     elif call == 'edit_another_city':
         await edit_another_city(arg=callback)
-    elif call == 'edit_online_practice':
-        await edit_online_practice(arg=callback)
+    elif call == 'edit_interaction_format':
+        await edit_interaction_format(arg=callback)
     elif call == 'edit_min_max_age':
         await edit_min_age(arg=callback)
     else:
@@ -600,8 +598,8 @@ def register_edit_profile(dp:Dispatcher):
     dp.register_callback_query_handler( edit_another_city_confirm, yes_no_cb_new.filter(),
                                         state=EditOther.another_city_state )
 # Изменение онлайн практик
-    dp.register_callback_query_handler( edit_online_practice_confirm, yes_no_cb_new.filter(),
-                                        state=EditOther.online_practice_state )
+    dp.register_callback_query_handler( edit_interaction_format_confirm, interaction_format_cb.filter(),
+                                        state=EditOther.interaction_format_state )
 
 # Изменение онлайн практик
     dp.register_message_handler(edit_max_age, state=EditOther.min_age_state)

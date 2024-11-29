@@ -16,7 +16,7 @@ class FSM_hello(StatesGroup):
     min_age = State()
     max_age= State()
     another_city = State()
-    online_practice = State()
+    interaction_format = State()
     finish = State()
     choice_partner = State()
 
@@ -67,7 +67,7 @@ class EditOther(StatesGroup):
     tabu_state = State()
     birthday_state = State()
     another_city_state = State()
-    online_practice_state = State()
+    interaction_format_state = State()
     min_age_state = State()
     max_age_state = State()
 

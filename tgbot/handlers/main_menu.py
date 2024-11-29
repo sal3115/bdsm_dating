@@ -56,6 +56,8 @@ async def view_questionnaires(message:Union[types.Message, types.CallbackQuery],
         return
     if page+1 > len(ankets_data):
         page = 0
+    if page < 0:
+        page = len(ankets_data)-1
     anket = ankets_data[0 + page]
     if type_profile == 'favorites_profile':
         text, user_id_anket = await format_text_profile( anket=anket, type_profile='favorites_profile', session=session_maker )

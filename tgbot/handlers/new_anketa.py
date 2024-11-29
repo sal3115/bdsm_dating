@@ -7,7 +7,7 @@ from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram.dispatcher import FSMContext
 
 from tgbot.keyboards.inline import func_kb_back_2, func_kb_gender, yes_no_button, \
-    func_kb_position, yes_no_cb
+    func_kb_position, yes_no_cb, interaction_format_button, interaction_format_cb
 from tgbot.keyboards.reply import main_menu_kb
 from tgbot.misc.states import FSM_hello
 from tgbot.models.sql_request import insert_users, insert_photo, update_first_photo
@@ -72,7 +72,7 @@ async def gender_choice_partner(arg: Union[Message, CallbackQuery], state: FSMCo
             kb = await func_kb_gender(gender='men')
             await state.update_data( gender=gender )
             await message.answer( text=text, reply_markup=kb )
-        elif gender == 'woman':
+        elif gender == 'women':
             await FSM_hello.choice_partner.set()
             text = text_dict['qw_6_1']
             kb = await func_kb_gender()
@@ -318,10 +318,10 @@ async def max_age_another_city(message: Message, state:FSMContext):
 
 #принимаем анкеты других городов, запрос онлайн практик
 
-async def another_city_online(message: Union[types.Message, types.CallbackQuery], state:FSMContext,
+async def another_city_interaction_format(message: Union[types.Message, types.CallbackQuery], state:FSMContext,
                               callback_data: dict = None, album: List[types.Message]= None):
     text = text_dict['qw_17_2']
-    kb = await yes_no_button()
+    kb = await interaction_format_button()
     if isinstance(message, types.Message):
         if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
             await message.answer( text=text)
@@ -343,13 +343,13 @@ async def another_city_online(message: Union[types.Message, types.CallbackQuery]
         await state.update_data(partner_another_city=answer)
         await message.answer( text=text, reply_markup=kb )
         await message.edit_reply_markup()
-        await FSM_hello.online_practice.set()
+        await FSM_hello.interaction_format.set()
 
     data = await state.get_data()
     logging.info( msg=[data, await state.get_state()] )
 
 #принимаем онлайн практики городов  завершающий этап
-async def online_finish(message: Union[types.Message, types.CallbackQuery], state:FSMContext,
+async def interaction_format_finish(message: Union[types.Message, types.CallbackQuery], state:FSMContext,
                               callback_data: dict = None, album: List[types.Message]= None):
     text = text_dict['qw_22']
     if isinstance(message, types.Message):
@@ -365,11 +365,7 @@ async def online_finish(message: Union[types.Message, types.CallbackQuery], stat
         await message.answer()
         message = message.message
         answer = callback_data['callback']
-        if answer == 'yes':
-            answer = True
-        else:
-            answer = False
-        await state.update_data(online_practice=answer)
+        await state.update_data(interaction_format=answer)
         data = await state.get_data()
         session = message.bot.data['session_maker']
         await insert_users(session, data)
@@ -414,7 +410,7 @@ async def back_button(message: Message, state: FSMContext):
         "FSM_hello:max_age": photo_min_age,
         "FSM_hello:another_city": min_age_max_age,
         "FSM_hello:online_practice": max_age_another_city,
-        "FSM_hello:finish": another_city_online,
+        "FSM_hello:finish": another_city_interaction_format,
     }
     # Забираем нужную функцию для выбранного уровня
     current_level_function = levels[curent_state]
@@ -467,9 +463,9 @@ def register_anketa(dp:Dispatcher):
     dp.register_message_handler( photo_min_age, state=FSM_hello.your_photo, content_types=types.ContentType.ANY)
     dp.register_message_handler( min_age_max_age, state=FSM_hello.min_age)
     dp.register_message_handler( max_age_another_city, state=FSM_hello.max_age)
-    dp.register_callback_query_handler( another_city_online, yes_no_cb.filter(), state=FSM_hello.another_city)
-    dp.register_callback_query_handler(online_finish, yes_no_cb.filter(), state= FSM_hello.online_practice)
-    dp.register_message_handler( online_finish, state=FSM_hello.online_practice)
+    dp.register_callback_query_handler( another_city_interaction_format, yes_no_cb.filter(), state=FSM_hello.another_city)
+    dp.register_callback_query_handler(interaction_format_finish, interaction_format_cb.filter(), state= FSM_hello.interaction_format)
+    dp.register_message_handler( interaction_format_finish, state=FSM_hello.interaction_format)
 
 
 

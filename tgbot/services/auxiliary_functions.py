@@ -336,6 +336,7 @@ async def add_user_func(data):
 
 
 async def format_text_profile(anket, session, type_profile=None, reward=None, return_reward=False):
+    interaction_format_russia = {'offline': 'Оффлайн', 'online': 'Онлайн','all': 'Любой'}
     user_id_anket = anket['user_id']
     id_anket = anket['id']
     name = anket['first_name']
@@ -344,6 +345,10 @@ async def format_text_profile(anket, session, type_profile=None, reward=None, re
     last_time = anket['last_time']
     tabu = anket['tabu']
     practices = anket['practices']
+    interaction_format = anket['interaction_format']
+    gender = anket['gender']
+    gender_partner = anket['gender_partner']
+
     user_info = await select_user(session=session, user_id=user_id_anket)
     text=''
     if type_profile =='favorites_profile':
@@ -355,9 +360,11 @@ async def format_text_profile(anket, session, type_profile=None, reward=None, re
     elif type_profile == 'not_interested_me':
         text = f'НЕ ПОНРАВИЛИСЬ ВАМ\n\n'
     text += f'Имя: {name}. Возраст: {age}\n'
+    text += f'Пол: {gender}. Ищю пол: {gender_partner}\n'
     text += f'Город: {city}\n'
     correct_date = last_time.strftime("%d-%m-%Y")
     text += f'Последнее посещение: {correct_date}\n'
+    text += f'Желаемый формат: {interaction_format_russia[f"{interaction_format}"]}\n'
     text += f'Желаемые практики: {practices}\n'
     text += f'Табу: {tabu}\n'
     text += f'\n\nНомер анкеты: {id_anket}'

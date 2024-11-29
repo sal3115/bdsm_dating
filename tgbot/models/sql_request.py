@@ -33,7 +33,7 @@ async def insert_users(session, params, value = None):
     tabu = params['tabu'],
     practices = params['practice'],
     partner_another_city =params['partner_another_city'],
-    online_practice = params['online_practice'],
+    interaction_format = params['interaction_format'],
     gender_partner = params['gender_partner'],
     min_age = params['min_age'],
     max_age = params['max_age'],
@@ -152,11 +152,13 @@ async def select_user_anketa(session, user_id):
             partner_another_city = user.partner_another_city
             min_age = user.min_age
             max_age = user.max_age
-            online_practice = user.online_practice
+            interaction_format = user.interaction_format
+            my_gender = user.gender
+            my_gender_partner = user.gender_partner
 
             today = datetime.datetime.today()
-            min_birthday = today - datetime.timedelta( days=(365 * max_age) )
-            max_birthday = today - datetime.timedelta( days=(365 * min_age + 1) )
+            min_birthday = today - datetime.timedelta( days=(365 * (max_age +1 )) )
+            max_birthday = today - datetime.timedelta( days=(365 * (min_age + 1)) )
 
             request = select(
                 *[col for col in Users.__table__.c]
@@ -165,7 +167,6 @@ async def select_user_anketa(session, user_id):
                 ~Users.user_id.in_(
                     select( LikeDislikeTable.id_partner ).filter( LikeDislikeTable.id_user == user_id )
                 ),
-                Users.gender != select( Users.gender ).where( Users.user_id == user_id ),
                 Users.moderation == True,
                 Users.birthday <= max_birthday,  # Добавляем фильтр на максимальный возраст
                 Users.birthday >= min_birthday,
@@ -186,7 +187,48 @@ async def select_user_anketa(session, user_id):
                         )
                     )
                 )
+            #onliine_practice
+            if interaction_format == 'online':
+                request = request.where(
+                    or_(
+                        Users.interaction_format == 'online',
+                        Users.interaction_format == 'all',
+                    )
+                )
+            elif interaction_format == 'offline':
+                request = request.where(
+                    or_(
+                        Users.interaction_format == 'offline',
+                        Users.interaction_format == 'all',
 
+                    )
+                )
+            elif interaction_format == "all" :
+                request = request.where(
+                        or_(
+                            Users.interaction_format == 'offline',
+                            Users.interaction_format == 'online',
+                            Users.interaction_format == 'all'
+
+                )
+                )
+            #при поле муж не показывать муж
+            if my_gender == 'men':
+                request = request.where(Users.gender != 'men')
+            # пол партнера равен желаемому полу
+            if my_gender_partner == 'all':
+                request.where(
+                    or_(
+                        Users.gender == 'men',
+                        Users.gender == 'women'
+                )
+                )
+            request = request.where(
+                and_(
+                    Users.gender ==  my_gender_partner,
+                Users.gender_partner == my_gender
+            )
+            )
             answer = ses.execute( request )
             answer2 = [dict( r._mapping ) for r in answer.fetchall()]
             return answer2

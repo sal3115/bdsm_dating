@@ -15,7 +15,7 @@ async def func_kb_gender(gender=None):
     kb = InlineKeyboardMarkup()
     if gender != 'men':
         kb.add(InlineKeyboardButton(text='👨‍🦰Мужчина', callback_data=f'men'))
-    but_2 = InlineKeyboardButton(text='👩‍🦳Женщина', callback_data=f'woman')
+    but_2 = InlineKeyboardButton(text='👩‍🦳Женщина', callback_data=f'women')
     but_3 = InlineKeyboardButton(text='👨‍🦰👩‍🦳Пара', callback_data=f'pair')
     but_4 = InlineKeyboardButton(text='⬅️Назад', callback_data=f'back')
 
@@ -387,7 +387,7 @@ async def edit_profile_kb():
     markup.add(
         InlineKeyboardButton( text='Анкеты из другого города?', callback_data=edit_profile_cd.new( callback='edit_another_city' ) ) )
     markup.add(
-        InlineKeyboardButton( text='Онлайн практики?', callback_data=edit_profile_cd.new( callback='edit_online_practice' ) ) )
+        InlineKeyboardButton( text='Формат отношений', callback_data=edit_profile_cd.new( callback='edit_interaction_format' ) ) )
     markup.add(
         InlineKeyboardButton( text='Изменить мин и макс возраст',
                               callback_data=edit_profile_cd.new( callback='edit_min_max_age' ) ) )
@@ -797,3 +797,17 @@ async def yes_no_kb():
     markup.insert( InlineKeyboardButton( text='Нет',
                                          callback_data=yes_no_cb_new.new( callback='no' ) ) )
     return markup
+
+
+interaction_format_cb = CallbackData('ifcb', 'callback')
+
+async def interaction_format_button():
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.insert(InlineKeyboardButton(text='Оффлайн',
+                                       callback_data=interaction_format_cb.new(callback='offline')))
+    markup.insert(InlineKeyboardButton(text='Онлайн',
+                                       callback_data= interaction_format_cb.new(callback = 'online')))
+    markup.insert( InlineKeyboardButton( text='Оба',
+                                         callback_data=interaction_format_cb.new( callback='all' ) ) )
+    return markup
+
