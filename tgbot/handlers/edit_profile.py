@@ -11,6 +11,7 @@ from tgbot.keyboards.reply import cancel_kb, main_menu_kb
 from tgbot.misc.states import EditOther
 from tgbot.models.sql_request import select_user, update_user_info, select_rejection_user, update_first_photo, \
     select_photo, delete_photo_in_table, select_first_photo, insert_photo
+from tgbot.services.anketa_utulites import checking_russian_letters
 from tgbot.services.auxiliary_functions import edit_message, text_separator, add_photo_func, profile_viewer, \
     date_formats
 
@@ -253,11 +254,16 @@ async def edit_city_state(message: Union[types.Message, types.CallbackQuery], st
     if isinstance(message , types.CallbackQuery):
         message = message.message
     new_city = message.text
-    await state.update_data(new_city=new_city)
-    text = f'Вы уверены что хотите поменять город на {new_city} '
-    kb = await yes_no_kb()
-    await edit_message(message=message, text=text, markup=kb)
-
+    if await checking_russian_letters(new_city):
+        await state.update_data(new_city=new_city)
+        text = f'Вы уверены что хотите поменять город на {new_city} '
+        kb = await yes_no_kb()
+        await edit_message( message=message, text=text, markup=kb )
+    else:
+        text = 'Напиши город русскими буквами'
+        kb = await yes_no_kb()
+        await edit_message( message=message, text=text, markup=kb )
+        return
 async def edit_city_confirm(message: Union[types.Message, types.CallbackQuery], state:FSMContext, callback_data:dict):
     if isinstance(message,types.CallbackQuery):
         message = message.message

@@ -11,13 +11,15 @@ from aiogram.utils.callback_data import CallbackData
 from tgbot.models.sql_request import  select_user_name
 
 
-async def func_kb_gender():
+async def func_kb_gender(gender=None):
     kb = InlineKeyboardMarkup()
-    but_1 = InlineKeyboardButton(text='👨Мужчина', callback_data=f'men')
-    but_2 = InlineKeyboardButton(text='👩Женщина', callback_data=f'women')
-    but_3 = InlineKeyboardButton(text='⬅️Назад', callback_data=f'back')
+    if gender != 'men':
+        kb.add(InlineKeyboardButton(text='👨‍🦰Мужчина', callback_data=f'men'))
+    but_2 = InlineKeyboardButton(text='👩‍🦳Женщина', callback_data=f'woman')
+    but_3 = InlineKeyboardButton(text='👨‍🦰👩‍🦳Пара', callback_data=f'pair')
+    but_4 = InlineKeyboardButton(text='⬅️Назад', callback_data=f'back')
 
-    kb.add(but_1).add(but_2).add(but_3)
+    kb.add(but_2).add(but_3).add(but_4)
     return kb
 
 

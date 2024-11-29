@@ -18,7 +18,7 @@ class FSM_hello(StatesGroup):
     another_city = State()
     online_practice = State()
     finish = State()
-    woman_woman = State()
+    choice_partner = State()
 
 
 
