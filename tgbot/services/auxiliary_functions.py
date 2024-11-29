@@ -122,7 +122,10 @@ async def edit_message(message: Union[types.Message, types.CallbackQuery], text=
         media = InputMedia(media=photo)
         if message.photo:
             logging.info('---------------------------------------')
-            await message.edit_media( media=media )
+            try:
+                await message.edit_media( media=media )
+            except BadRequest:
+                pass
             new_text = await text_separator(text = text, photo=True)
             logging.info(len(new_text))
             if len(new_text) > 1:

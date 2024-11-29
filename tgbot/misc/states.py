@@ -61,6 +61,15 @@ class EditOther(StatesGroup):
     my_photo_state = State()
     # состояния для изменения видеовизитки
     my_video_card_state = State()
+    name_state = State()
+    city_state = State()
+    practice_state = State()
+    tabu_state = State()
+    birthday_state = State()
+    another_city_state = State()
+    online_practice_state = State()
+    min_age_state = State()
+    max_age_state = State()
 
 
 class UserModeraion(StatesGroup):

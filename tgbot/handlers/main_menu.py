@@ -7,8 +7,7 @@ from aiogram.dispatcher.filters import CommandStart
 from aiogram.types import MediaGroup, InputMedia
 from aiogram.utils import exceptions
 
-from tgbot.handlers.edit_profile import first_edit_profile
-from tgbot.keyboards.inline import dating_keyboard, dating_keyboard_cb, my_profile_kb, my_profile_cd, scrolling_photos, \
+from tgbot.keyboards.inline import dating_keyboard, dating_keyboard_cb,  scrolling_photos, \
     scrolling_photos_cb, favorite_profile_kb, interesting_cb, cancel_inline_kb, cancel_cd
 from tgbot.keyboards.reply import main_menu_kb
 from tgbot.misc.states import ComplaintsUser

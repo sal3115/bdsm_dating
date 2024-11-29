@@ -1,391 +1,602 @@
 import logging
-from typing import Union
+from typing import Union, List
 
-from aiogram import Dispatcher
+from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
-from aiogram.types import Message, CallbackQuery, ContentType
+from aiogram.utils.exceptions import MessageNotModified
 
-from tgbot.keyboards.inline import func_kb_back_2, func_kb_phone, new_kb_back, yes_no_button, \
-    yes_no_cb
-from tgbot.keyboards.reply import main_menu_kb
-from tgbot.misc.states import EditProfile
-from tgbot.models.sql_request import update_user_info
-from tgbot.services.anketa_utulites import check_mail
-from tgbot.services.auxiliary_functions import edit_message, delete_keyboard
-from tgbot.services.photo_and_text import text_dict
+from tgbot.keyboards.inline import my_profile_new_cd, edit_profile_cd, edit_profile_kb, my_photos_cd, cancel_cd, \
+    cancel_inline_kb, edit_my_photos_kb, yes_no_kb, yes_no_cb_new
+from tgbot.keyboards.reply import cancel_kb, main_menu_kb
+from tgbot.misc.states import EditOther
+from tgbot.models.sql_request import select_user, update_user_info, select_rejection_user, update_first_photo, \
+    select_photo, delete_photo_in_table, select_first_photo, insert_photo
+from tgbot.services.auxiliary_functions import edit_message, text_separator, add_photo_func, profile_viewer, \
+    date_formats
 
 
-async def complete_edit(message:Message, state:FSMContext):
-    kb = await main_menu_kb()
-    await edit_message(message=message, text='Редактирование завершено', markup=kb)
+async def cancel_inline_update(call: types.CallbackQuery, state: FSMContext):
     await state.finish()
-
-
-async def first_edit_profile(message:Union[Message, CallbackQuery], state=FSMContext):
-    logging.info(f'------------------------- first_edit_profile')
-    kb = await new_kb_back(button_next=True)
-    text = "Здесь ты можешь отредактировать свою анкету"
-    await edit_message(message=message, text= text, markup=kb)
-    await EditProfile.email_state.set()
-
-#TODO сделать везде при изменении статус пользователя False и сделать функцию отправки на модерацию
-async def edit_email(message: Message, state: FSMContext):
-    logging.info(f'------------------------- editing email')
-    text = text_dict['qw_4']
-    kb = await func_kb_phone(button_next=True, button_complete=True)
-    if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
-        await message.answer(text=text, reply_markup=kb)
-        await EditProfile.phone_state.set()
-    elif await check_mail(message.text):
-        session_maker = message.bot.data['session_maker']
-        user_id = message.chat.id
-        await update_user_info(session= session_maker,user_id=user_id, e_mail=message.text)
-        await message.answer( text=text, reply_markup=kb )
-        await EditProfile.phone_state.set()
+    text = 'Вы отменили редактирование'
+    kb = await main_menu_kb()
+    await edit_message( message=call, text=text, markup=kb )
+async def changing_moderation(session, user_id):
+    rejections_user = await select_rejection_user(session=session, user_id=user_id)
+    if len(rejections_user) > 0:
+        await update_user_info(session=session, user_id=user_id,status = 'user', moderation = False )
     else:
-        text = text_dict['qw_3']
-        kb = await new_kb_back( button_next=True )
-        await message.answer( text=text, reply_markup=kb )
-        await EditProfile.email_state.set()
-    data = await state.get_data()
-    logging.info( msg=[data, await state.get_state()])
+        await update_user_info(session=session, user_id=user_id,moderation = False)
+async def my_profile_edit_process(callback: Union[types.CallbackQuery, types.Message]):
+    text = 'Выберете что хотите поменять'
+    kb = await edit_profile_kb()
+    await edit_message(message=callback, text=text, markup=kb)
 
 
+async def edit_about_me(callback:types.CallbackQuery):
+    if isinstance(callback, types.CallbackQuery):
+        message = callback.message
+    user_id = message.chat.id
+    kb = await cancel_kb()
+    session_maker = message.bot.data['session_maker']
+    user_anket = await select_user( session=session_maker, user_id=user_id )
+    about_me = user_anket[0]['about_my_self']
+    logging.info(len(about_me))
+    text = f'Здесь ты можешь поменять пункт "обо мне". Если хотите поменять на основании предыдущего просто нажмите на текст находящийся в ' \
+           f'звездочке и оно копируется, далее вставьте и отредактируйте\n'\
 
-async def edit_phone(message:Message, state: FSMContext):
-    logging.info(f'------------------------- editing phone')
-    text = text_dict['qw_5']
-    kb = await new_kb_back(button_next=True, button_back=True)
-    if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
-        await message.answer( text=text, reply_markup=kb )
-    elif message.contact is not None:
-        phone_number = message.contact.phone_number
-        session_maker = message.bot.data['session_maker']
-        user_id = message.chat.id
-        await update_user_info(session= session_maker,user_id=user_id,phone_number=phone_number )
-        await message.answer( text=text, reply_markup=kb )
-    else:
-        pass
-    await EditProfile.social_network_state.set()
-    data = await state.get_data()
-    logging.info( msg=[data, await state.get_state()] )
-
-
-async def edit_social_network(message:Message, state: FSMContext):
-    logging.info(f'------------------------- editing social network')
-    text = text_dict['qw_8']
-    kb = await new_kb_back( button_next=True, button_back=True )
-    if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
-        await message.answer( text=text, reply_markup=kb )
-    else:
-        await message.answer( text=text, reply_markup=kb )
-        session_maker = message.bot.data['session_maker']
-        user_id = message.chat.id
-        social_network = message.text
-        await update_user_info(session= session_maker,user_id=user_id,social_network=social_network )
-    await EditProfile.country_state.set()
-    data = await state.get_data()
-    logging.info( msg=[data, await state.get_state()] )
-
-
-async def edit_country(message:Message, state:FSMContext):
-    logging.info( f'------------------------- editing country' )
-    text = text_dict['qw_9']
-    kb = await new_kb_back(button_next=True, button_back=True)
-    if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
-        await message.answer( text=text, reply_markup=kb )
-    else:
-        country = message.text
-        session_maker = message.bot.data['session_maker']
-        user_id = message.chat.id
-        await update_user_info(session= session_maker,user_id=user_id,country=country )
-        await message.answer( text=text, reply_markup=kb )
-    await EditProfile.city_state.set()
-    data = await state.get_data()
-    logging.info( msg=[data, await state.get_state()] )
-
-
-async def edit_city(message:Message, state:FSMContext):
-    logging.info( f'------------------------- editing city' )
-    text = text_dict['qw_10']
-    kb = await yes_no_button( message )
-    if message.text == '🔙Вернуться НАЗАД':
-        await message.bot.edit_message_reply_markup( chat_id=message.chat.id, message_id=message.message_id - 1 )
-        await message.answer( text=text, reply_markup=kb )
-    elif message.text == 'Пропустить🔜':
-        await message.answer( text=text, reply_markup=kb )
-    else:
-        city = message.text
-        session_maker = message.bot.data['session_maker']
-        user_id = message.chat.id
-        await update_user_info(session= session_maker,user_id=user_id,town=city )
-        await message.answer( text=text, reply_markup=kb )
-    await EditProfile.confession_state.set()
-    data = await state.get_data()
-    logging.info( msg=[data, await state.get_state()] )
-
-
-async def edit_confession(arg: Union[Message, CallbackQuery], state: FSMContext):
-    logging.info( f'------------------------- editing confession' )
-    text = text_dict['qw_11']
-    kb = await new_kb_back(button_next=True, button_back=True)
-    if isinstance(arg, CallbackQuery):
-        message = arg.message
-        confesion_data = arg.data
-        if confesion_data != 'conf_new':
-            confesion_data = arg.data.split(',')
-            conf = confesion_data[0]
-            session_maker = arg.message.bot.data['session_maker']
-            user_id = message.chat.id
-            await update_user_info(session= session_maker,user_id=user_id,confession=conf)
-            await message.edit_reply_markup()
-            await message.answer(text=text, reply_markup=kb)
-            await EditProfile.church_state.set()
+    if len(about_me) > 4000:
+        about_my_self_new = await text_separator( text=about_me )
+        if len( about_my_self_new ) > 1:
+            for mess in about_my_self_new:
+                await message.answer( text=f'*<code>{mess}</code>*' )
         else:
-            text = text_dict['qw_10_1']
-            await message.edit_reply_markup()
-            await message.answer(text=text, reply_markup=kb)
-            await EditProfile.confession_new_state.set()
-    if isinstance(arg, Message):
-        if arg.text == '🔙Вернуться НАЗАД' or arg.text == 'Пропустить🔜':
-            message = arg
-            await message.answer(text=text, reply_markup=kb)
-            await EditProfile.church_state.set()
-        elif await state.get_state() == 'EditProfile:confession_state':
-            await arg.delete()
-        else:
-            await arg.answer(text=text, reply_markup=kb)
-    data = await state.get_data()
-    logging.info( msg=[data, await state.get_state()] )
+            await message.answer( text=f'*<code>{about_me}</code>*' )
+    else:
+        text += f'*<code>{about_me}</code>*'
+        await edit_message(message=callback, text=text, markup=kb)
+    await EditOther.about_me_state.set()
 
-async def edit_new_confession(message:Message, state: FSMContext):
-    logging.info( f'------------------------- editing new_confession' )
-    conf = message.text
+async def edit_about_me_state(message:types.Message, state:FSMContext):
+    about_my_self = message.text
+    if len(about_my_self) > 4000:
+        about_my_self_new = await text_separator(text=about_my_self)
+        if len(about_my_self_new) > 1:
+            for mess in about_my_self_new:
+                await message.answer(text=f'*<code>{mess}</code>*')
+        else:
+            await message.answer( text=f'*<code>{about_my_self}</code>*' )
+        text = f'Сократите количество символов до 4000 сейчас {len( about_my_self )} '
+        await message.answer( text=text )
+        return
     session_maker = message.bot.data['session_maker']
     user_id = message.chat.id
-    await update_user_info( session=session_maker, user_id=user_id, confession=conf )
-    text = text_dict['qw_11']
-    kb = await new_kb_back(button_back=True, button_next=True)
-    await message.answer(text=text, reply_markup=kb)
-    await EditProfile.church_state.set()
-    data = await state.get_data()
-    logging.info(msg=[data, await state.get_state()])
-
-
-async def edit_church(message:Message, state:FSMContext):
-    logging.info(f'------------------------- editing church')
-    kb_yes = await yes_no_button()
-    text = text_dict['qw_17_1']#вопрос про анкеты другого города
-    if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
-        await message.answer(text=text, reply_markup=kb_yes)
-        await EditProfile.profiles_another_city_state.set()
-
-    else:
-        session_maker = message.bot.data['session_maker']
-        user_id = message.chat.id
-        await update_user_info( session=session_maker, user_id=user_id, church=message.text )
-        await message.answer( text=text, reply_markup=kb_yes )
-
-        await EditProfile.profiles_another_city_state.set()
-    data = await state.get_data()
-    logging.info(msg=[data, await state.get_state()])
-
-async def edit_profile_other_city(message:Union[Message, CallbackQuery], state:FSMContext, callback_data: dict = None):
-    logging.info(f'------------------------- editing other_city')
-    text = text_dict['qw_18']#вопрос про анкеты другой страны
-    kb_yes = await yes_no_button()
-    if isinstance( message, Message ):
-        if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
-            await delete_keyboard( message )
-            await message.answer( text=text, reply_markup=kb_yes )
-            await EditProfile.profiles_another_country_state.set()
-        else:
-            await message.delete()
-    else:
-        message = message.message
-        answer = callback_data['callback']
-        if answer == 'yes':
-            answer = True
-        else:
-            answer = False
-        session_maker = message.bot.data['session_maker']
-        user_id = message.chat.id
-        await message.edit_text( text=text, reply_markup=kb_yes )
-        await update_user_info( session=session_maker, user_id=user_id, partner_another_city=answer )
-        await EditProfile.profiles_another_country_state.set()
-    data = await state.get_data()
-    logging.info(msg=[data, await state.get_state()])
-
-
-async def edit_profile_other_country(message:Union[Message, CallbackQuery], state:FSMContext, callback_data: dict = None):
-    logging.info(f'------------------------- editing other_country')
-    text = text_dict['qw_19']  #вопрос про анкеты другой конфесии
-    kb_yes = await yes_no_button()
-    if isinstance( message, Message ):
-        if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
-            await delete_keyboard( message )
-            await message.answer( text=text, reply_markup=kb_yes )
-            await EditProfile.profiles_another_confession_state.set()
-        else:
-            await message.delete()
-    else:
-        message = message.message
-        answer = callback_data['callback']
-        if answer == 'yes':
-            answer = True
-        else:
-            answer = False
-        session_maker = message.bot.data['session_maker']
-        user_id = message.chat.id
-        await message.edit_text( text=text, reply_markup=kb_yes )
-        await update_user_info( session=session_maker, user_id=user_id, partner_another_town = answer )
-        await EditProfile.profiles_another_confession_state.set()
-    data = await state.get_data()
-    logging.info(msg=[data, await state.get_state()])
-
-async def edit_profile_other_confession(message:Union[Message, CallbackQuery], state:FSMContext, callback_data: dict = None):
-    logging.info(f'------------------------- editing other confession')
-    text = text_dict['qw_20']  # вопрос про минимальный возраст
-    kb = await new_kb_back()
-    if isinstance( message, Message ):
-        if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
-            await delete_keyboard( message )
-            await message.answer( text=text, reply_markup=kb )
-            await EditProfile.min_age_state.set()
-        else:
-            await message.delete()
-    else:
-        message = message.message
-        answer = callback_data['callback']
-        if answer == 'yes':
-            answer = True
-        else:
-            answer = False
-        session_maker = message.bot.data['session_maker']
-        user_id = message.chat.id
-        await message.edit_text( text=text )
-        await update_user_info( session=session_maker, user_id=user_id, partner_another_conf = answer )
-        await EditProfile.min_age_state.set()
-    data = await state.get_data()
-    logging.info(msg=[data, await state.get_state()])
-
-async def edit_min_age(message:Message, state:FSMContext):
-    logging.info(f'------------------------- editing min_age')
-    text = text_dict['qw_21']  # вопрос про максимальный возраст
-    kb = await new_kb_back(button_back=True)
-    if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
-        await message.answer(text=text, reply_markup=kb)
-        await EditProfile.max_age_state.set()
-    else:
-        try:
-            min_age = int(message.text)
-        except ValueError:
-            await message.answer(text='Пришлите минимально подходящий возраст')
-            return
-        session_maker = message.bot.data['session_maker']
-        user_id = message.chat.id
-        await edit_message(message=message, text=text, markup=kb )
-        await update_user_info( session=session_maker, user_id=user_id, min_age=min_age )
-        await EditProfile.max_age_state.set()
-    data = await state.get_data()
-    logging.info(msg=[data, await state.get_state()])
-
-async def edit_max_age(message:Message, state:FSMContext):
-    logging.info(f'------------------------- editing max_age')
-    text = text_dict['qw_24']  # завершающий вопрос
-    kb = await new_kb_back(button_back=True)
-    if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
-        await message.answer(text=text, reply_markup=kb)
-        await state.finish()
-    else:
-        try:
-            max_age = int(message.text)
-        except ValueError:
-            await message.answer(text='Пришлите максимально подходящий возраст')
-            return
-        session_maker = message.bot.data['session_maker']
-        user_id = message.chat.id
-        kb = await main_menu_kb()
-        await message.answer( text=text, reply_markup=kb )
-        await update_user_info( session=session_maker, user_id=user_id, max_age=max_age )
+    logging.info( [f'userid: {user_id}', f'Длина о себе: {len( about_my_self )}'] )
+    await update_user_info( session=session_maker, user_id=user_id, about_my_self=about_my_self )
     await state.finish()
+    await changing_moderation( session=session_maker, user_id=user_id )
+    text = 'Вы изменили пункт "О себе"'
+    kb = await edit_profile_kb()
+    await edit_message( message=message, text=text, markup=kb )
+
+
+#редактор фото
+async def edit_my_photo(call: Union[types.CallbackQuery, types.Message], user_id,counter=0):
+    session_maker = call.bot.data['session_maker']
+    more_photos = await select_photo( session=session_maker, user_id=user_id )
+    quantity_photos = len( more_photos )
+    if quantity_photos < 1:
+        kb = await edit_my_photos_kb(user_id=user_id, counter=counter,no_foto=True)
+        await edit_message(message=call, text=f'У вас нет фото нажмите "Добавить"', markup=kb)
+        return
+    if counter + 1 > quantity_photos:
+        counter = 0
+    if counter <= -1:
+        counter = quantity_photos - 1
+    current_photo = more_photos[0 + counter]['photo_id']
+    first_photo = more_photos[0 + counter]['is_first_photo']
+    kb = await edit_my_photos_kb(user_id=user_id, counter=counter, first_photo=first_photo)
+    await edit_message( message=call, text=f'Фото {counter + 1} из {quantity_photos}', markup=kb, photo=current_photo )
+
+
+async def edit_my_first_photo(call: types.CallbackQuery, counter):
+    session_maker = call.bot.data['session_maker']
+    user_id = call.message.chat.id
+    logging.info(['-------------user_id----------', user_id])
+    photos = await select_photo(session=session_maker, user_id=user_id)
+    first_photo_all = await select_first_photo( session=session_maker, user_id=user_id )
+    quantity_photos = len( first_photo_all )
+    if quantity_photos > 1:
+        for p in first_photo_all[0]['photo_id']:
+            await update_first_photo( session=session_maker, user_id=user_id, photo_id=p, first_photo=False)
+    elif quantity_photos <=0:
+        pass
+    else:
+        first_photo_id = first_photo_all[0]['photo_id']
+        await update_first_photo( session=session_maker, user_id=user_id, photo_id=first_photo_id, first_photo=False )
+    photo_id = photos[0+counter]['photo_id']
+    logging.info(['-------------photo_id----------', photo_id ])
+    await update_first_photo(session=session_maker, user_id=user_id, photo_id=photo_id, first_photo=True)
+    kb = await edit_my_photos_kb( user_id=user_id, counter=counter, first_photo=True )
+    try:
+        await call.message.edit_reply_markup( reply_markup=kb )
+        await call.answer('Главное фото изменено')
+    except MessageNotModified:
+        await call.answer('Данное фото является главной')
+        pass
+
+
+async def add_my_photo(message: Union[types.Message, types.CallbackQuery]):
+    logging.info(['------------add_my_photo------------'])
+    text = 'Прикрепите фото которые хотите добавить'
+    kb = await cancel_inline_kb()
+    await edit_message(message=message, text=text, markup=kb)
+    await EditOther.my_photo_state.set()
+    logging.info(['------------add_my_photo_end------------'])
+
+async def add_my_photo_state(message: types.Message, state:FSMContext ,album: List[types.Message]= None):
+    logging.info(['------------add_my_photo_state------------'])
+    session_maker = message.bot.data['session_maker']
+    user_id = message.chat.id
+    if message.photo:
+        photo = message.photo
+        photos = await add_photo_func(photo=photo, album=album)
+        if len(photos) == 1:
+            file_id = photos[0]['file_id']
+            unique_id = photos[0]['unique_id']
+            await insert_photo(session=session_maker, user_id=user_id, photo_id=file_id, unique_id=unique_id )
+            await state.finish()
+        elif len(photos) > 1:
+            for photo in photos:
+                file_id = photo['file_id']
+                unique_id = photo['unique_id']
+                await insert_photo( session=session_maker, user_id=user_id, photo_id=file_id, unique_id=unique_id )
+            await state.finish()
+        else:
+            await message.answer('Что то пошло не так')
+            await state.finish()
+        info_first_photo = await select_first_photo(session=session_maker, user_id=user_id)
+        if len(info_first_photo) < 1:
+            first_photo_id = photos[0]['file_id']
+            await update_first_photo(session=session_maker, user_id=user_id, photo_id=first_photo_id)
+        await changing_moderation( session=session_maker, user_id=user_id )
+        await edit_my_photo(call=message, user_id=user_id)
+        logging.info(['-----------photos-----------', photos])
+        logging.info(['-----------len photos-----------', len(photos)])
+    else:
+        await message.delete()
+
+
+async def delete_my_photo(call:types.CallbackQuery):
+    session_maker = call.bot.data['session_maker']
+    unique_id = call.message.photo[-1].file_unique_id
+    user_id = call.message.chat.id
+    info_first_photo = await select_first_photo( session=session_maker, user_id=user_id )
+    await delete_photo_in_table( session=session_maker, user_id=user_id, unique_id=unique_id )
+    if unique_id == info_first_photo[0]['unique_id']:
+        all_photos = await select_photo( session=session_maker, user_id=user_id )
+        if len(all_photos) >0:
+            first_photo_id = all_photos[0]['photo_id']
+            await update_first_photo( session=session_maker, user_id=user_id, photo_id=first_photo_id )
+    await call.answer('Фото удалено')
+    await edit_my_photo(call=call, user_id=user_id)
+
+async def scrolling_my_photo_cb(call: types.CallbackQuery, callback_data: dict):
+    callback = callback_data['callback']
+    user_id = call.message.chat.id
+    counter = int(callback_data['counter'])
+    if callback == 'previous_photo':
+        await edit_my_photo(call = call, user_id=user_id, counter=counter-1)
+    elif callback == 'next_photo':
+        await edit_my_photo(call = call, user_id=user_id, counter=counter+1)
+    elif callback == 'assign_main':
+        await edit_my_first_photo(call=call, counter=counter)
+    elif callback == 'add_photo':
+        await add_my_photo(message=call)
+    elif callback == 'delete_photo':
+        await delete_my_photo(call=call)
+    elif callback == 'back':
+        await my_profile_edit_process(callback=call)
+    await call.answer()
+
+
+#edit_name
+async def edit_name(arg: Union[types.Message, types.CallbackQuery]):
+    text = 'Напиши новое имя'
+    kb = await cancel_inline_kb()
+    await edit_message(message=arg, text=text, markup=kb)
+    await EditOther.name_state.set()
+
+
+async def edit_name_state(message: Union[types.Message, types.CallbackQuery], state:FSMContext):
+    logging.info('edit_name_state')
+    if isinstance(message , types.CallbackQuery):
+        message = message.message
+    new_name = message.text
+    await state.update_data(new_name=new_name)
+    text = f'Вы уверены что хотите поменять имя на {new_name} '
+    kb = await yes_no_kb()
+    await edit_message(message=message, text=text, markup=kb)
+    logging.info('edit_name_state_cancel')
+
+async def edit_name_confirm(message: Union[types.Message, types.CallbackQuery], state:FSMContext, callback_data:dict):
+    if isinstance(message,types.CallbackQuery):
+        message = message.message
+    callback = callback_data['callback']
+    if callback == 'yes':
+        user_id = message.chat.id
+        session = message.bot.data['session_maker']
+        data = await state.get_data()
+        new_name = data['new_name']
+        await update_user_info(session=session, user_id= user_id, first_name = new_name )
+        text = f'Вы успешно изменили имя теперь вас зовут {new_name}'
+        kb = await edit_profile_kb()
+    elif callback == 'no':
+        text = f'Вы отменили изменение имени'
+        kb = await edit_profile_kb()
+    else:
+        text = 'что-то пошло не так'
+        kb = await edit_profile_kb()
+    await edit_message(message=message, text=text, markup=kb)
+    await state.finish()
+
+
+
+#edit_city
+async def edit_city(arg: Union[types.Message, types.CallbackQuery]):
+    text = 'Напиши новый город'
+    kb = await cancel_inline_kb()
+    await edit_message(message=arg, text=text, markup=kb)
+    await EditOther.city_state.set()
+
+
+async def edit_city_state(message: Union[types.Message, types.CallbackQuery], state:FSMContext):
+    if isinstance(message , types.CallbackQuery):
+        message = message.message
+    new_city = message.text
+    await state.update_data(new_city=new_city)
+    text = f'Вы уверены что хотите поменять город на {new_city} '
+    kb = await yes_no_kb()
+    await edit_message(message=message, text=text, markup=kb)
+
+async def edit_city_confirm(message: Union[types.Message, types.CallbackQuery], state:FSMContext, callback_data:dict):
+    if isinstance(message,types.CallbackQuery):
+        message = message.message
+    callback = callback_data['callback']
+    if callback == 'yes':
+        user_id = message.chat.id
+        session = message.bot.data['session_maker']
+        data = await state.get_data()
+        new_city = data['new_city']
+        await update_user_info(session=session, user_id= user_id, city = new_city )
+        text = f'Вы успешно изменили свой город {new_city}'
+        kb = await edit_profile_kb()
+    elif callback == 'no':
+        text = f'Вы отменили изменение'
+        kb = await edit_profile_kb()
+    else:
+        text = 'что-то пошло не так'
+        kb = await edit_profile_kb()
+    await edit_message(message=message, text=text, markup=kb)
+    await state.finish()
+
+
+#edit_practice
+async def edit_practice(arg: Union[types.Message, types.CallbackQuery]):
+    if isinstance(arg, types.CallbackQuery):
+        arg = arg.message
+    session = arg.bot.data['session_maker']
+    all_user_info = await select_user(session=session, user_id=arg.chat.id)
+    text = f'Напиши свои новые практики сейчас твои практики:\n' \
+           f'<code>{all_user_info[0]["practices"]}</code>'
+    kb = await cancel_inline_kb()
+    await edit_message(message=arg, text=text, markup=kb)
+    await EditOther.practice_state.set()
+
+
+async def edit_practice_state(message: Union[types.Message, types.CallbackQuery], state:FSMContext):
+    if isinstance(message , types.CallbackQuery):
+        message = message.message
+    new_practice = message.text
+    await state.update_data(new_practice=new_practice)
+    text = f'Вы уверены что хотите поменять практики на {new_practice} '
+    kb = await yes_no_kb()
+    await edit_message(message=message, text=text, markup=kb)
+
+async def edit_practice_confirm(message: Union[types.Message, types.CallbackQuery], state:FSMContext, callback_data:dict):
+    if isinstance(message,types.CallbackQuery):
+        message = message.message
+    callback = callback_data['callback']
+    if callback == 'yes':
+        user_id = message.chat.id
+        session = message.bot.data['session_maker']
+        data = await state.get_data()
+        new_practice = data['new_practice']
+        await update_user_info(session=session, user_id= user_id, practices = new_practice )
+        text = f'Вы успешно изменили свои практики'
+        kb = await edit_profile_kb()
+    elif callback == 'no':
+        text = f'Вы отменили изменение'
+        kb = await edit_profile_kb()
+    else:
+        text = 'что-то пошло не так'
+        kb = await edit_profile_kb()
+    await edit_message(message=message, text=text, markup=kb)
+    await state.finish()
+
+#edit_tabu
+async def edit_tabu(arg: Union[types.Message, types.CallbackQuery]):
+    if isinstance(arg, types.CallbackQuery):
+        arg = arg.message
+    session = arg.bot.data['session_maker']
+    all_user_info = await select_user(session=session, user_id=arg.chat.id)
+    text = f'Напиши свои новые табу сейчас твои табу:\n' \
+           f'<code>{all_user_info[0]["tabu"]}</code>'
+    kb = await cancel_inline_kb()
+    await edit_message(message=arg, text=text, markup=kb)
+    await EditOther.tabu_state.set()
+
+
+async def edit_tabu_state(message: Union[types.Message, types.CallbackQuery], state:FSMContext):
+    if isinstance(message , types.CallbackQuery):
+        message = message.message
+    new_tabu = message.text
+    await state.update_data(new_tabu=new_tabu)
+    text = f'Вы уверены что хотите поменять свои табу на {new_tabu} '
+    kb = await yes_no_kb()
+    await edit_message(message=message, text=text, markup=kb)
+
+async def edit_tabu_confirm(message: Union[types.Message, types.CallbackQuery], state:FSMContext, callback_data:dict):
+    if isinstance(message,types.CallbackQuery):
+        message = message.message
+    callback = callback_data['callback']
+    if callback == 'yes':
+        user_id = message.chat.id
+        session = message.bot.data['session_maker']
+        data = await state.get_data()
+        new_tabu = data['new_tabu']
+        await update_user_info(session=session, user_id= user_id, tabu = new_tabu )
+        text = f'Вы успешно изменили свои табу'
+        kb = await edit_profile_kb()
+    elif callback == 'no':
+        text = f'Вы отменили изменение'
+        kb = await edit_profile_kb()
+    else:
+        text = 'что-то пошло не так'
+        kb = await edit_profile_kb()
+    await edit_message(message=message, text=text, markup=kb)
+    await state.finish()
+
+
+#edit_date_Birthday
+async def edit_birthday(arg: Union[types.Message, types.CallbackQuery]):
+    if isinstance(arg, types.CallbackQuery):
+        arg = arg.message
+    session =arg.bot.data['session_maker']
+    all_user_info = await select_user(session=session, user_id=arg.chat.id)
+    birthday = all_user_info[0]["birthday"]
+    correct_date = birthday.strftime("%d-%m-%Y")
+    text = f'Напиши свой день рождения сейчас: {correct_date}'
+    kb = await cancel_inline_kb()
+    await edit_message(message=arg, text=text, markup=kb)
+    await EditOther.birthday_state.set()
+
+
+async def edit_birthday_state(message: Union[types.Message, types.CallbackQuery], state:FSMContext):
+    if isinstance(message , types.CallbackQuery):
+        message = message.message
+    new_birthday = message.text
+    check_date = await date_formats(new_birthday)
+    if check_date:
+        await state.update_data(new_birthday=new_birthday)
+        text = f'Вы уверены что хотите поменять день рождение на {new_birthday} '
+        kb = await yes_no_kb()
+        await edit_message( message=message, text=text, markup=kb )
+    else:
+        text = 'Введен не правильный формат даты. Введи в формате 01-01-2000'
+        kb = await cancel_inline_kb()
+        await edit_message( message=message, text=text, markup=kb )
+        return
+
+
+async def edit_birthday_confirm(message: Union[types.Message, types.CallbackQuery], state:FSMContext, callback_data:dict):
+    if isinstance(message,types.CallbackQuery):
+        message = message.message
+    callback = callback_data['callback']
+    if callback == 'yes':
+        user_id = message.chat.id
+        session = message.bot.data['session_maker']
+        data = await state.get_data()
+        new_birthday = data['new_birthday']
+        await update_user_info(session=session, user_id= user_id, birthday = new_birthday )
+        text = f'Вы успешно изменили свой день рождение'
+        kb = await edit_profile_kb()
+    elif callback == 'no':
+        text = f'Вы отменили изменение'
+        kb = await edit_profile_kb()
+    else:
+        text = 'что-то пошло не так'
+        kb = await edit_profile_kb()
+    await edit_message(message=message, text=text, markup=kb)
+    await state.finish()
+
+
+#edit_another_city
+async def edit_another_city(arg: Union[types.Message, types.CallbackQuery], state:FSMContext=None):
+    if isinstance(arg, types.CallbackQuery):
+        arg = arg.message
+    text = f'Хочешь просматривать анкеты с другого города?'
+    kb = await yes_no_kb()
+    await edit_message(message=arg, text=text, markup=kb)
+    await EditOther.another_city_state.set()
+
+
+async def edit_another_city_confirm(message: Union[types.Message, types.CallbackQuery], state:FSMContext, callback_data:dict):
+    if isinstance(message,types.CallbackQuery):
+        message = message.message
+    callback = callback_data['callback']
+    user_id = message.chat.id
+    session = message.bot.data['session_maker']
+    if callback == 'yes':
+        await update_user_info(session=session, user_id= user_id, partner_another_city = True )
+        text = f'Теперь ты будешь видеть анкеты с другого города'
+        kb = await edit_profile_kb()
+    elif callback == 'no':
+        await update_user_info(session=session, user_id= user_id, partner_another_city = False )
+        text = f'Теперь ты не будешь видеть анкеты с другого города'
+        kb = await edit_profile_kb()
+    else:
+        text = 'что-то пошло не так'
+        kb = await edit_profile_kb()
+    await edit_message(message=message, text=text, markup=kb)
+    await state.finish()
+
+
+# edit_online_practice
+async def edit_online_practice(arg: Union[types.Message, types.CallbackQuery], state: FSMContext = None):
+    if isinstance( arg, types.CallbackQuery ):
+        arg = arg.message
+    text = f'Хочешь ли ты онлайн практики?'
+    kb = await yes_no_kb()
+    await edit_message( message=arg, text=text, markup=kb )
+    await EditOther.online_practice_state.set()
+
+
+async def edit_online_practice_confirm(message: Union[types.Message, types.CallbackQuery], state: FSMContext,
+                                    callback_data: dict):
+    if isinstance( message, types.CallbackQuery ):
+        message = message.message
+    callback = callback_data['callback']
+    user_id = message.chat.id
+    session = message.bot.data['session_maker']
+    if callback == 'yes':
+        await update_user_info( session=session, user_id=user_id, online_practice=True )
+        text = f'Установили что ты не против онлайн практик '
+        kb = await edit_profile_kb()
+    elif callback == 'no':
+        await update_user_info( session=session, user_id=user_id, online_practice=False )
+        text = f'Установили что ты против онлайн практик '
+        kb = await edit_profile_kb()
+    else:
+        text = 'что-то пошло не так'
+        kb = await edit_profile_kb()
+    await edit_message( message=message, text=text, markup=kb )
+    await state.finish()
+
+
+# edit_max_min_age
+async def edit_min_age(arg: Union[types.Message, types.CallbackQuery], state:FSMContext=None):
+    if isinstance( arg, types.CallbackQuery ):
+        arg = arg.message
+    text = f'Пришли новый минимальный возраст'
+    kb = await cancel_inline_kb()
+    await edit_message( message=arg, text=text, markup=kb )
+    await EditOther.min_age_state.set()
+
+async def edit_max_age(arg: Union[types.Message, types.CallbackQuery], state:FSMContext):
+    if isinstance(arg, types.CallbackQuery):
+        arg = arg.message
+    text = f'Пришли новый максимальный возраст'
+    kb = await cancel_inline_kb()
+    try:
+        min_age = int(arg.text)
+        if min_age < 18 :
+            await arg.answer( text='Слишком маленький возраст, пришлите другой.' )
+            return
+        await state.update_data(min_age=min_age)
+    except ValueError:
+        await arg.answer(text='Пришлите минимальный возраст')
+        return
+    await arg.answer( text=text, reply_markup=kb )
+    await EditOther.max_age_state.set()
+
+async def min_max_age_confirm(arg: Union[types.Message, types.CallbackQuery], state:FSMContext):
+    if isinstance(arg, types.CallbackQuery):
+        arg = arg.message
     data = await state.get_data()
-    logging.info(msg=[data, await state.get_state()])
+    try:
+        max_age = int(arg.text)
+        min_age = int(data['min_age'])
+        if min_age > max_age:
+            await arg.answer( text=f'Вы ввели минимальный возраст {min_age}, а максимальный {max_age}, '
+                                       f'пожалуйста введите корректный максимальный возраст' )
+            return
+        else:
+            user_id = arg.chat.id
+            session = arg.bot.data['session_maker']
+            await update_user_info( session=session, user_id=user_id, min_age=min_age, max_age=max_age)
+            text = f'Минимально подходящий возраст изменен на {min_age}, максимально подходящий возраст на {max_age}'
+            kb = await edit_profile_kb()
+            await arg.answer( text=text, reply_markup=kb )
+            await state.finish()
+    except ValueError:
+        await arg.answer(text='Пришлите максимальный подходящий возраст')
+        return
 
-async def edit_back_button(message: Message, state: FSMContext):
-    curent_state = await state.get_state()
-    levels = {
-        "EditProfile:phone_state": first_edit_profile,
-        "EditProfile:social_network_state": edit_email,
-        "EditProfile:country_state": edit_phone,
-        "EditProfile:city_state": edit_social_network,
-        "EditProfile:confession_state": edit_country,
-        "EditProfile:church_state": edit_city,
-        "EditProfile:profiles_another_city_state": edit_confession,
-        "EditProfile:profiles_another_country_state": edit_church,
-        "EditProfile:profiles_another_confession_state":edit_profile_other_city ,
-        "EditProfile:min_age_state": edit_profile_other_country,
-        "EditProfile:max_age_state":edit_profile_other_confession ,
-    }
-    # Забираем нужную функцию для выбранного уровня
-    current_level_function = levels[curent_state]
-    await current_level_function(
-        message,
-        state = state
-    )
-    print(curent_state)
-#
-#
-async def edit_next_button(message: Message, state: FSMContext):
-    curent_state = await state.get_state()
-    levels = {
-        "EditProfile:email_state": edit_email,
-        "EditProfile:phone_state": edit_phone,
-        "EditProfile:social_network_state": edit_social_network,
-        "EditProfile:country_state": edit_country,
-        "EditProfile:city_state": edit_city,
-        "EditProfile:confession_state": edit_confession,
-        "EditProfile:church_state": edit_church,
-        "EditProfile:profiles_another_city_state": edit_profile_other_city,
-        "EditProfile:profiles_another_country_state": edit_profile_other_country,
-        "EditProfile:profiles_another_confession_state": edit_profile_other_confession,
-        "EditProfile:min_age_state": edit_min_age,
-        "EditProfile:max_age_state": edit_max_age,
 
-    }
-    # Забираем нужную функцию для выбранного уровня
-    current_level_function = levels[curent_state]
-    await current_level_function(
-        message,
-        state = state
-    )
+async def edit_profile_kb_process(callback:types.CallbackQuery, callback_data:dict):
+    call = callback_data['callback']
+    logging.info(call)
+    if call == 'edit_about_me':
+        await edit_about_me(callback=callback)
+    elif call == 'edit_photo':
+        await edit_my_photo(call=callback, user_id=callback.message.chat.id)
+    elif call == 'edit_name':
+        await edit_name(arg=callback)
+    elif call == 'edit_city':
+        await edit_city(arg=callback)
+    elif call == 'edit_practice':
+        await edit_practice(arg=callback)
+    elif call == 'edit_tabu':
+        await edit_tabu(arg=callback)
+    elif call == 'edit_date_birth':
+        await edit_birthday(arg=callback)
+    elif call == 'edit_another_city':
+        await edit_another_city(arg=callback)
+    elif call == 'edit_online_practice':
+        await edit_online_practice(arg=callback)
+    elif call == 'edit_min_max_age':
+        await edit_min_age(arg=callback)
+    else:
+        text = 'Что то пошло не так'
+        await edit_message(message=callback, text=text)
 
 
 def register_edit_profile(dp:Dispatcher):
-    dp.register_message_handler(complete_edit,text ='Завершить', state=EditProfile)
-    dp.register_message_handler(edit_back_button, text='🔙Вернуться НАЗАД', state=EditProfile )
-    dp.register_message_handler(edit_next_button, text='Пропустить🔜', state=EditProfile )
-    dp.register_message_handler( edit_email, state=EditProfile.email_state )
-    dp.register_message_handler( edit_phone, state=EditProfile.phone_state )
-    dp.register_message_handler( edit_phone,content_types=ContentType.CONTACT, state=EditProfile.phone_state )
+    dp.register_callback_query_handler( edit_profile_kb_process, edit_profile_cd.filter())
+    dp.register_message_handler( edit_about_me_state, state=EditOther.about_me_state)
+# Photo
+    dp.register_callback_query_handler(scrolling_my_photo_cb, my_photos_cd.filter())
+    # # dp.register_message_handler(cancel_func, text='Отмена', state=EditOther.my_photo_state)
+    dp.register_callback_query_handler(cancel_inline_update, cancel_cd.filter(), state=EditOther.my_photo_state)
+    #
+    dp.register_message_handler(add_my_photo_state, state=EditOther.my_photo_state, content_types=types.ContentType.ANY)
+#Изменение имени
+    # dp.register_message_handler(edit_name, cancel_cd.filter(),state=EditOther)
+    dp.register_message_handler(edit_name_state,state=EditOther.name_state)
+    dp.register_callback_query_handler(edit_name_confirm, yes_no_cb_new.filter(), state=EditOther.name_state)
+# Изменение города
+    # dp.register_message_handler(edit_name, cancel_cd.filter(),state=EditOther)
+    dp.register_message_handler( edit_city_state, state=EditOther.city_state )
+    dp.register_callback_query_handler( edit_city_confirm, yes_no_cb_new.filter(), state=EditOther.city_state )
+# Изменение практики
+    # dp.register_message_handler(edit_name, cancel_cd.filter(),state=EditOther)
+    dp.register_message_handler( edit_practice_state, state=EditOther.practice_state )
+    dp.register_callback_query_handler( edit_practice_confirm, yes_no_cb_new.filter(), state=EditOther.practice_state )
+# Изменение табу
+    # dp.register_message_handler(edit_name, cancel_cd.filter(),state=EditOther)
+    dp.register_message_handler( edit_tabu_state, state=EditOther.tabu_state)
+    dp.register_callback_query_handler( edit_tabu_confirm, yes_no_cb_new.filter(), state=EditOther.tabu_state )
+# Изменение день рождение
+    # dp.register_message_handler(edit_name, cancel_cd.filter(),state=EditOther)
+    dp.register_message_handler( edit_birthday_state, state=EditOther.birthday_state )
+    dp.register_callback_query_handler( edit_birthday_confirm, yes_no_cb_new.filter(), state=EditOther.birthday_state )
+# Изменение партнер с другого города
+    dp.register_callback_query_handler( edit_another_city_confirm, yes_no_cb_new.filter(),
+                                        state=EditOther.another_city_state )
+# Изменение онлайн практик
+    dp.register_callback_query_handler( edit_online_practice_confirm, yes_no_cb_new.filter(),
+                                        state=EditOther.online_practice_state )
 
-    dp.register_message_handler( edit_social_network, state=EditProfile.social_network_state )
-    dp.register_message_handler( edit_country, state=EditProfile.country_state )
-    dp.register_message_handler( edit_city, state=EditProfile.city_state )
-    dp.register_callback_query_handler( edit_confession, state=EditProfile.confession_state )
-    dp.register_message_handler( edit_new_confession, state=EditProfile.confession_new_state)
-
-    dp.register_message_handler( edit_church, state=EditProfile.church_state)
-
-    dp.register_message_handler( edit_profile_other_city, state=EditProfile.profiles_another_city_state)
-    dp.register_callback_query_handler( edit_profile_other_city, yes_no_cb.filter(), state=EditProfile.profiles_another_city_state)
-
-    dp.register_message_handler( edit_profile_other_country, state=EditProfile.profiles_another_country_state)
-    dp.register_callback_query_handler( edit_profile_other_country, yes_no_cb.filter(),state=EditProfile.profiles_another_country_state)
-
-    dp.register_message_handler( edit_profile_other_confession, state=EditProfile.profiles_another_confession_state)
-    dp.register_callback_query_handler( edit_profile_other_confession, yes_no_cb.filter(),state=EditProfile.profiles_another_confession_state)
-
-    dp.register_message_handler( edit_min_age, state=EditProfile.min_age_state)
-    dp.register_message_handler( edit_max_age, state=EditProfile.max_age_state)
-
+# Изменение онлайн практик
+    dp.register_message_handler(edit_max_age, state=EditOther.min_age_state)
+    dp.register_message_handler(min_max_age_confirm, state=EditOther.max_age_state)

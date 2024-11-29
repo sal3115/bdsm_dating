@@ -337,18 +337,60 @@ async def ok_recommendation():
     return markup
 
 
-my_profile_cd= CallbackData('my_profile_cal_bac', 'callback', 'user_id')
-async def my_profile_kb(user_id):
+# my_profile_cd= CallbackData('my_profile_cal_bac', 'callback', 'user_id')
+# async def my_profile_kb(user_id):
+#     markup = InlineKeyboardMarkup( row_width=1)
+#     markup.add(InlineKeyboardButton( text='Посмотреть анкету', callback_data=my_profile_cd.new( callback='view_profile',
+#                                                                                              user_id=user_id ) ) )
+#     markup.add(
+#         InlineKeyboardButton( text='Изменить анкету', callback_data=my_profile_cd.new( callback='edit_profile', user_id=user_id ) ) )
+#     markup.add(
+#         InlineKeyboardButton( text='Изменить "о себе"', callback_data=my_profile_cd.new( callback='edit_about_me', user_id=user_id  ) ) )
+#     markup.add( InlineKeyboardButton( text='Изменить фото',
+#                                       callback_data=my_profile_cd.new( callback='edit_photo', user_id=user_id  ) ) )
+#     markup.add( InlineKeyboardButton( text='Оформить подписку', callback_data=my_profile_cd.new( callback='get_subscribe', user_id=user_id  ) ) )
+#     return markup
+
+my_profile_new_cd= CallbackData('mpn_cb', 'callback', 'user_id')
+async def my_profile_kb_new(user_id):
     markup = InlineKeyboardMarkup( row_width=1)
-    markup.add(InlineKeyboardButton( text='Посмотреть анкету', callback_data=my_profile_cd.new( callback='view_profile',
+    markup.add(InlineKeyboardButton( text='Посмотреть анкету', callback_data=my_profile_new_cd.new( callback='view_profile',
                                                                                              user_id=user_id ) ) )
     markup.add(
-        InlineKeyboardButton( text='Изменить анкету', callback_data=my_profile_cd.new( callback='edit_profile', user_id=user_id ) ) )
+        InlineKeyboardButton( text='Изменить анкету', callback_data=my_profile_new_cd.new( callback='edit_profile', user_id=user_id ) ) )
+    markup.add( InlineKeyboardButton( text='Оформить подписку', callback_data=my_profile_new_cd.new( callback='get_subscribe', user_id=user_id  ) ) )
+    return markup
+
+
+edit_profile_cd= CallbackData('ep_cb', 'callback')
+async def edit_profile_kb():
+    markup = InlineKeyboardMarkup( row_width=2 )
+    markup.insert(
+        InlineKeyboardButton( text='Изменить "о себе"',
+                              callback_data=edit_profile_cd.new( callback='edit_about_me' ) ) )
+    markup.insert( InlineKeyboardButton( text='Изменить фото',
+                                      callback_data=edit_profile_cd.new( callback='edit_photo' ) ) )
+    markup.insert(
+        InlineKeyboardButton( text='Изменить имя',
+                              callback_data=edit_profile_cd.new( callback='edit_name' ) ) )
+    markup.insert(
+        InlineKeyboardButton( text='Изменить город', callback_data=edit_profile_cd.new( callback='edit_city' ) ) )
+
+    markup.insert(
+        InlineKeyboardButton( text='Изменить практики', callback_data=edit_profile_cd.new( callback='edit_practice' ) ) )
+    markup.insert(
+        InlineKeyboardButton( text='Изменить табу', callback_data=edit_profile_cd.new( callback='edit_tabu' ) ) )
+    markup.insert(
+        InlineKeyboardButton( text='Изменить дату рождения', callback_data=edit_profile_cd.new( callback='edit_date_birth' ) ) )
     markup.add(
-        InlineKeyboardButton( text='Изменить "о себе"', callback_data=my_profile_cd.new( callback='edit_about_me', user_id=user_id  ) ) )
-    markup.add( InlineKeyboardButton( text='Изменить фото',
-                                      callback_data=my_profile_cd.new( callback='edit_photo', user_id=user_id  ) ) )
-    markup.add( InlineKeyboardButton( text='Оформить подписку', callback_data=my_profile_cd.new( callback='get_subscribe', user_id=user_id  ) ) )
+        InlineKeyboardButton( text='Анкеты из другого города?', callback_data=edit_profile_cd.new( callback='edit_another_city' ) ) )
+    markup.add(
+        InlineKeyboardButton( text='Онлайн практики?', callback_data=edit_profile_cd.new( callback='edit_online_practice' ) ) )
+    markup.add(
+        InlineKeyboardButton( text='Изменить мин и макс возраст',
+                              callback_data=edit_profile_cd.new( callback='edit_min_max_age' ) ) )
+
+
     return markup
 
 
@@ -744,3 +786,12 @@ async def paid_subs_kb(data ,user_id):
         markup.insert(InlineKeyboardButton( text=f'{dat["title"]}', callback_data= paid_subs_cd.new(id_price = dat['id'], user_id=user_id) ) )
     return markup
 
+
+yes_no_cb_new = CallbackData('yncn', 'callback')
+async def yes_no_kb():
+    markup = InlineKeyboardMarkup( row_width=2 )
+    markup.insert( InlineKeyboardButton( text='Да',
+                                         callback_data=yes_no_cb_new.new( callback='yes' ) ) )
+    markup.insert( InlineKeyboardButton( text='Нет',
+                                         callback_data=yes_no_cb_new.new( callback='no' ) ) )
+    return markup
