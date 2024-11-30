@@ -12,7 +12,7 @@ from tgbot.keyboards.reply import main_menu_kb
 from tgbot.misc.states import FSM_hello
 from tgbot.models.sql_request import insert_users, insert_photo, update_first_photo
 from tgbot.services.anketa_utulites import checking_russian_letters
-from tgbot.services.auxiliary_functions import date_formats, add_photo_func
+from tgbot.services.auxiliary_functions import date_formats, add_photo_func, check_city
 from tgbot.services.photo_and_text import text_dict
 
 
@@ -144,16 +144,25 @@ async def birth_city(message: Message, state: FSMContext):
 async def city_position(message: Message, state: FSMContext):
     text = text_dict['qw_10']
     kb = await func_kb_position( message )
-    city = message.text
     if message.text == '🔙Вернуться НАЗАД':
         await FSM_hello.your_position.set()
         await message.answer( text=text, reply_markup=kb )
-    elif await checking_russian_letters(city):
-        await state.update_data(city=city)
+    city = message.text
+    check_rus_city = await checking_russian_letters( city )
+    if check_rus_city:
+        city = await check_city( city )
+    else:
+        text = text_dict['qw_9_1']  # спрашиваем город русскими буквами
+        kb = await func_kb_back_2()
+        await message.answer( text=text, reply_markup=kb )
+        await FSM_hello.your_city.set()
+        return
+    if city:
+        await state.update_data(city=city[1])
         await message.answer( text=text, reply_markup=kb )
         await FSM_hello.your_position.set()
     else:
-        text = text_dict['qw_9_1'] # спрашиваем город русскими буквами
+        text = text_dict['qw_9_2'] # спрашиваем город русскими буквами
         kb = await func_kb_back_2()
         await message.answer(text=text, reply_markup=kb)
         await FSM_hello.your_city.set()
@@ -252,7 +261,7 @@ async def photo_min_age(message: Message, state:FSMContext, album: List[types.Me
     if message.photo:
         photo = message.photo
         photos = await add_photo_func(photo=photo, album=album)
-        logging.info(photos)
+        logging.info(album)
         if len( photos ) == 1:
             async with state.proxy() as data:
                 data["photo"] = photos

@@ -8,11 +8,24 @@ from typing import Union, List
 from aiogram import types
 from aiogram.types import InputMedia, InputMediaVideo
 from aiogram.utils.exceptions import MessageCantBeEdited, BadRequest, MessageToEditNotFound, MessageToDeleteNotFound
+from geopy import Nominatim
+from geopy.adapters import AioHTTPAdapter
 
 from tgbot.models.sql_request import select_photo, select_user, select_check_mutual_interest
 from tgbot.services.calculate_age import calculateAge
 
-
+async def check_city(city):
+    async with Nominatim(user_agent="bot_tg", adapter_factory=AioHTTPAdapter) as geolocator:
+        location = await geolocator.geocode(language='ru', query ={'city':city, 'county': '', 'country': 'Russia'})
+        try:
+            check_city = location.raw
+            adress_type = check_city['addresstype'] == 'city'
+            name_city = check_city['name']
+            return adress_type, name_city
+        except AttributeError:
+            return False
+        except TypeError:
+            return False
 async def date_formats(dates):
     command_parse = re.compile(r'^(0?[1-9]|[12][0-9]|3[01])[- |/.,](0?[1-9]|1[012])[- |/.,](19|20)\d\d$')
     command_parse_2 = re.compile(r'^(0?[1-9]|[12][0-9]|3[01])[- |/.,](0?[1-9]|1[012])[- |/.,](19|20|21|22|23|24|25)$')
@@ -155,7 +168,10 @@ async def edit_message(message: Union[types.Message, types.CallbackQuery], text=
         else:
             new_text = await text_separator(text = text, photo=True)
             logging.info('--------------------------------------8')
-            await message.delete()
+            try:
+                await message.delete()
+            except MessageToDeleteNotFound:
+                pass
             if len(new_text) > 1:
                 counter = 0
                 for mess in new_text:

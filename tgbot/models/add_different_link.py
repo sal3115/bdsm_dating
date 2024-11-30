@@ -3,6 +3,7 @@ import logging
 import textwrap
 from math import ceil
 
+import geopy
 from aiogram import types
 from aiogram.types import InputMedia
 
@@ -21,18 +22,43 @@ if __name__ == '__main__':
 #         users['user_id'] = users['user_id'] + k+1
 #         print(users['user_id'] )
 #         lll = loop.run_until_complete( insert_users( session=session, params = users ) )
+'''
+from functools import partial
+from geopy.geocoders import Nominatim
 
-    more_photos = loop.run_until_complete(select_photo( session=session, user_id=465090182 ))
-    quantity_photos = len( more_photos )
-    logging.info(more_photos)
-    media = types.MediaGroup()
-    for photo in more_photos:
-        photo_id = InputMedia( media=photo['photo_id'] )
-        media.attach_photo( types.InputMediaPhoto( photo_id ))
-# Attach local file
-# media.attach_photo(types.InputFile('data/cat.jpg'), 'Cat!')
-# # More local files and more cats!
-# media.attach_photo(types.InputFile('data/cats.jpg'), 'More cats!')
-# # You can also use URL's
-# # For example: get random puss:
-# media.attach_photo('http://lorempixel.com/400/200/cats/', 'Random cat.')
+geolocator = Nominatim(user_agent="bot_tg")
+city = 'Калуга'
+geocode = partial(geolocator.geocode, language="ru", query ={'city':city,'county': '', 'country': 'Russia'} )
+check_city = geocode()
+print( check_city )
+try:
+    check_city = check_city.raw
+    adres_type = check_city['addresstype'] == 'city'
+    name_city = check_city['name']
+    print(check_city)
+    print(name_city)
+    print(adres_type)
+except AttributeError:
+    logging.info('Error')
+except TypeError:
+    logging.info('Error')
+'''
+
+from geopy.adapters import AioHTTPAdapter
+from geopy.geocoders import Nominatim
+city = 'Уфа'
+async def test_async(city):
+    async with Nominatim(user_agent="bot_tg", adapter_factory=AioHTTPAdapter) as geolocator:
+        location = await geolocator.geocode(language='ru', query ={'city':city, 'county': '', 'country': 'Russia'})
+        try:
+            check_city = location.raw
+            adress_type = check_city['addresstype'] == 'city'
+            name_city = check_city['name']
+            print( check_city )
+            print( name_city )
+            print( adress_type )
+        except AttributeError:
+            logging.info( 'Error' )
+        except TypeError:
+            logging.info( 'Error' )
+lll = loop.run_until_complete(test_async('Uf'))

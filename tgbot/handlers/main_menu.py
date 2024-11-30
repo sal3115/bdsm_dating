@@ -32,7 +32,9 @@ async def blocking_messages(message:types.Message):
 
 
 async def view_questionnaires(message:Union[types.Message, types.CallbackQuery], page=0, type_profile=None):
+    callback_id = None
     if isinstance(message, types.CallbackQuery):
+        callback_id = message.id
         message = message.message
     user_id = message.chat.id
     session_maker = message.bot.data['session_maker']
@@ -48,11 +50,14 @@ async def view_questionnaires(message:Union[types.Message, types.CallbackQuery],
     else:
         ankets_data= await select_user_anketa(session=session_maker,user_id=user_id)
     logging.info(['---------len anket---------', len(ankets_data)])
-
     if len(ankets_data) == 0:
-        if message.reply_markup:
-            await message.edit_reply_markup()
-        await edit_message(message=message,text='На данный момент анкет больше нет')
+        text = 'На данный момент анкет больше нет'
+        if callback_id:
+            await message.bot.answer_callback_query(callback_query_id=callback_id, text=text)
+        else:
+            if message.reply_markup:
+                await message.edit_reply_markup()
+            await edit_message(message=message,text=text)
         return
     if page+1 > len(ankets_data):
         page = 0

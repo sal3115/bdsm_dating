@@ -167,7 +167,7 @@ async def paid_subscription(call: types.CallbackQuery):
         text += f'{dat["title"]}: {int(dat["price"])} рублей\n'
     user_id = call.message.chat.id
     kb = await paid_subs_kb(data = data,user_id=user_id)
-    await call.message.answer(text=text, reply_markup=kb)
+    await edit_message(message=call, text=text, markup=kb)
 
 
 async def paid_subs_processor(call: types.CallbackQuery, callback_data:dict):
@@ -179,7 +179,6 @@ async def paid_subs_processor(call: types.CallbackQuery, callback_data:dict):
     title = ''
     number_of_day = ''
     yootoken = call.bot['config'].yootoken.yootoken
-    logging.info(f'----------token{yootoken}')
     for p in price_all_info:
         if int(p['id']) == int(price_id):
             title = p['title']

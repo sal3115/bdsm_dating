@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher import DEFAULT_RATE_LIMIT
@@ -80,7 +81,7 @@ class ThrottlingMiddleware(BaseMiddleware):
 
         # Calculate how many time is left till the block ends
         delta = throttled.rate - throttled.delta
-
+        logging.info(message)
         # Prevent flooding
         if throttled.exceeded_count <= 2:
             await message.reply('Too many requests! ')

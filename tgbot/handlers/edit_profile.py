@@ -13,7 +13,7 @@ from tgbot.models.sql_request import select_user, update_user_info, select_rejec
     select_photo, delete_photo_in_table, select_first_photo, insert_photo
 from tgbot.services.anketa_utulites import checking_russian_letters
 from tgbot.services.auxiliary_functions import edit_message, text_separator, add_photo_func, profile_viewer, \
-    date_formats
+    date_formats, check_city
 
 
 async def cancel_inline_update(call: types.CallbackQuery, state: FSMContext):
@@ -140,6 +140,7 @@ async def add_my_photo_state(message: types.Message, state:FSMContext ,album: Li
     user_id = message.chat.id
     if message.photo:
         photo = message.photo
+        logging.info(album)
         photos = await add_photo_func(photo=photo, album=album)
         if len(photos) == 1:
             file_id = photos[0]['file_id']
@@ -254,13 +255,21 @@ async def edit_city_state(message: Union[types.Message, types.CallbackQuery], st
     if isinstance(message , types.CallbackQuery):
         message = message.message
     new_city = message.text
-    if await checking_russian_letters(new_city):
-        await state.update_data(new_city=new_city)
-        text = f'Вы уверены что хотите поменять город на {new_city} '
+    check_rus_city = await checking_russian_letters(new_city)
+    if check_rus_city:
+        new_city = await check_city(new_city)
+    else:
+        text = 'Напиши город на русском языке'
+        kb = await cancel_inline_kb()
+        await edit_message( message=message, text=text, markup=kb )
+        return
+    if new_city:
+        await state.update_data(new_city=new_city[1])
+        text = f'Вы уверены что хотите поменять город на {new_city[1]} '
         kb = await yes_no_kb()
         await edit_message( message=message, text=text, markup=kb )
     else:
-        text = 'Напиши город русскими буквами'
+        text = 'Нет такого города в базе напиши еще раз'
         kb = await cancel_inline_kb()
         await edit_message( message=message, text=text, markup=kb )
         return
@@ -274,7 +283,7 @@ async def edit_city_confirm(message: Union[types.Message, types.CallbackQuery], 
         data = await state.get_data()
         new_city = data['new_city']
         await update_user_info(session=session, user_id= user_id, city = new_city )
-        text = f'Вы успешно изменили свой город {new_city}'
+        text = f'Вы успешно изменили свой город на {new_city}'
         kb = await edit_profile_kb()
     elif callback == 'no':
         text = f'Вы отменили изменение'

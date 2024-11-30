@@ -67,7 +67,8 @@ async def appoint_moderator_confirm(message:types.Message, state:FSMContext):
         user_id_appoint = int(message.text)
     except ValueError as e:
         text = 'Не правильный ИД'
-        await edit_message( message=message, text=text )
+        kb = await cancel_inline_kb()
+        await edit_message( message=message, text=text, markup=kb )
         return
     user_appoint = await select_user(session=session, user_id=user_id_appoint)
     if user_appoint:
@@ -83,7 +84,8 @@ async def appoint_moderator_confirm(message:types.Message, state:FSMContext):
         await AppointRemoveModerator.appoint_confirm_state.set()
     else:
         text = 'Не правильный ИД'
-        await edit_message(message=message, text=text)
+        kb = await cancel_inline_kb()
+        await edit_message(message=message, text=text, markup=kb)
         return
 
 async def appoint_moderator_complete(call:types.CallbackQuery, callback_data:dict, state:FSMContext):
@@ -115,7 +117,13 @@ async def remove_moderator(message:types.Message):
 
 async def remove_moderator_confirm(message:types.Message, state:FSMContext=None):
     session = message.bot.data['session_maker']
-    user_id_appoint = int(message.text)
+    try:
+        user_id_appoint = int(message.text)
+    except ValueError:
+        text = 'Отправьте ИД пользователя которого хотите убрать из модераторов'
+        kb = await cancel_inline_kb()
+        await edit_message( message=message, text=text, markup=kb )
+        return
     user_appoint = await select_user(session=session, user_id=user_id_appoint)
     if user_appoint:
         first_photo = await select_first_photo(session=session, user_id=user_id_appoint)
