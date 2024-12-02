@@ -63,6 +63,6 @@ text_dict = {
 
 
 text_main_menu = {
-    'support': '''Для получения поддержки обратитесь https://t.me/john_smith1113''',
+    'support': '''Для получения поддержки обратитесь @interest_dating_support_bot''',
     'useful_tips': '''Доп. инфа'''
 }

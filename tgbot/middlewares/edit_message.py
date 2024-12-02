@@ -31,12 +31,14 @@ class ReplaceOrDeleteInlineKeyboard(BaseMiddleware):
             # if 'pre_checkout_query' in message:
             #     await message.bot.delete_message( chat_id=message.pre_checkout_query.from_user.id, message_id=last_message_id )
             # else:
-            await message.bot.delete_message(chat_id=message.chat.id, message_id=last_message_id)
+            # await message.bot.delete_message(chat_id=message.chat.id, message_id=last_message_id)
+            await message.bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=last_message_id)
         except KeyError:
             pass
         except exceptions.MessageToDeleteNotFound:
             pass
-
+        except exceptions.MessageNotModified:
+            pass
 # class ReplaceOrDeleteLastMessage(BaseMiddleware):
 #     async def on_pre_process_update(self, update: Union[types.Update, types.CallbackQuery], data: dict):
 #         if 'pre_checkout_query' in update:
@@ -63,8 +65,20 @@ class ReplaceOrDeleteLastMessage(BaseMiddleware):
             messages_in_loop = message.bot["messages_in_loop"]
             if len(messages_in_loop) > 0:
                 for mess_id in messages_in_loop:
-                    await message.bot.delete_message(chat_id=message.chat.id, message_id=mess_id)
+                    await message.bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=mess_id)
         except KeyError:
             pass
         except exceptions.MessageToDeleteNotFound:
+            pass
+
+
+
+class None_last_message(BaseMiddleware):
+
+    async def on_post_process_message(self, message: types.Message, results, data: dict):
+        if 'pre_checkout_query' in message:
+            return
+        try:
+            message.bot["last_message_id"] = None
+        except KeyError:
             pass

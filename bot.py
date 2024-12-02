@@ -22,7 +22,7 @@ from tgbot.middlewares.album_med import AlbumMiddleware
 from tgbot.handlers.hello import register_hello
 from tgbot.middlewares.antiflood import ThrottlingMiddleware
 from tgbot.middlewares.edit_message import ReplaceOrDeleteInlineKeyboard, \
-    ReplaceOrDeleteLastMessage
+    ReplaceOrDeleteLastMessage, None_last_message
 from tgbot.middlewares.last_date_activ_day import DbMiddleware
 from tgbot.models.Base_model import Base
 from tgbot.models.engine import create_engine_db, get_session_maker, proceed_schemas
@@ -34,8 +34,9 @@ def register_all_middlewares(dp):
     dp.setup_middleware(AlbumMiddleware())
     dp.setup_middleware(DbMiddleware())
     dp.setup_middleware(ThrottlingMiddleware())
-    dp.setup_middleware(ReplaceOrDeleteInlineKeyboard())
-    dp.setup_middleware(ReplaceOrDeleteLastMessage())
+    # dp.setup_middleware(ReplaceOrDeleteInlineKeyboard())
+    # dp.setup_middleware(ReplaceOrDeleteLastMessage())
+    dp.setup_middleware(None_last_message())
 
 
 def register_all_filters(dp):

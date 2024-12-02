@@ -92,9 +92,9 @@ async def view_questionnaires(message:Union[types.Message, types.CallbackQuery],
     photos = await select_first_photo( session=session_maker, user_id=user_id_anket )
     if len(photos)>0:
         photo= photos[0]['photo_id']
-        await profile_viewer(message=message, text=text, photo=photo, markup=kb)
+        await edit_message(message=message, text=text, photo=photo, markup=kb)
     else:
-        await profile_viewer(message=message, text=text, markup=kb)
+        await edit_message(message=message, text=text, markup=kb)
 
 
 async def scrolling_photo_func(call: types.CallbackQuery, user_id_anket,page:int ,counter=0, type_profiles=None):
@@ -241,7 +241,7 @@ async def useful_tips(message:types.Message):
 
 async def support_func(message:types.Message):
     text = text_main_menu['support']
-    await message.answer(text=text)
+    await edit_message(message=message, text=text)
 
 async def no_moderation_user_answer(message:types.Message):
     text = 'Вы не прошли модерацию, пожалуйста подождите'

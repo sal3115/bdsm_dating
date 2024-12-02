@@ -7,7 +7,8 @@ from typing import Union, List
 
 from aiogram import types
 from aiogram.types import InputMedia, InputMediaVideo
-from aiogram.utils.exceptions import MessageCantBeEdited, BadRequest, MessageToEditNotFound, MessageToDeleteNotFound
+from aiogram.utils.exceptions import MessageCantBeEdited, BadRequest, MessageToEditNotFound, MessageToDeleteNotFound, \
+    MessageNotModified
 from geopy import Nominatim
 from geopy.adapters import AioHTTPAdapter
 
@@ -128,68 +129,151 @@ async def text_separator(text, photo = False):
         return new_text
 
 
+# async def edit_message(message: Union[types.Message, types.CallbackQuery], text=None, markup=None, photo=None, video=None):
+#     if isinstance(message, types.CallbackQuery):
+#         message = message.message
+#     if photo:  # если есть фото, изменяем сообщение с фото
+#         media = InputMedia(media=photo)
+#         if message.photo:
+#             logging.info('---------------------------------------')
+#             try:
+#                 await message.edit_media( media=media )
+#             except BadRequest:
+#                 pass
+#             new_text = await text_separator(text = text, photo=True)
+#             logging.info(len(new_text))
+#             if len(new_text) > 1:
+#                 counter = 0
+#                 for mess in new_text:
+#                     try:
+#                         if counter == 0:
+#                             message_callback = await message.edit_caption( caption=mess)
+#                         else:
+#                             message_callback = await message.answer( text=mess, reply_markup=markup)
+#                     except MessageCantBeEdited:
+#                         message_callback = await message.answer_photo( photo=photo, caption=mess, reply_markup=markup )
+#                     except BadRequest:
+#                         message_callback = await message.answer_photo( photo=photo, caption=mess, reply_markup=markup )
+#             else:
+#                 try:
+#                     logging.info( '--------------------------------------1' )
+#                     message_callback = await message.edit_caption( caption=new_text[0],reply_markup=markup )
+#                 except MessageCantBeEdited:
+#                     logging.info( '--------------------------------------2' )
+#
+#                     message_callback = await message.answer_photo(photo=photo, caption=new_text[0], reply_markup=markup)
+#                 except BadRequest:
+#                     logging.info( '--------------------------------------3' )
+#
+#                     message_callback = await message.answer_photo( photo=photo, caption=new_text[0], reply_markup=markup)
+#         else:
+#             new_text = await text_separator(text = text, photo=True)
+#             logging.info('--------------------------------------8')
+#             try:
+#                 logging.info( '--------------------------------------8_1' )
+#                 await message.delete()
+#             except MessageToDeleteNotFound:
+#                 logging.info( '--------------------------------------8_2' )
+#                 pass
+#             if len(new_text) > 1:
+#                 counter = 0
+#                 for mess in new_text:
+#                     if counter == 0:
+#                         logging.info( '--------------------------------------1' )
+#                         message_callback = await message.answer_photo(photo=photo,caption=mess)
+#                         counter += 1
+#                     else:
+#                         logging.info( '--------------------------------------2' )
+#                         counter += 1
+#                         if counter == len(new_text):
+#                             logging.info( '--------------------------------------3' )
+#                             message_callback = await message.answer(text=mess, reply_markup=markup)
+#                         else:
+#                             logging.info( '--------------------------------------4' )
+#                             message_callback = await message.answer(text=mess)
+#             else:
+#                 message_callback = await message.answer_photo( photo=photo, caption=new_text[0], reply_markup=markup )
+#     elif video:
+#         # если есть видео, изменяем сообщение с видео
+#         # await message.edit_caption( caption=text, reply_markup=markup  )
+#         await message.delete()
+#         # media = InputMediaVideo(media=video)
+#         message_callback = await message.answer_video( video=video,caption=text ,reply_markup=markup)
+#     else:
+#         # если нет ни фото, ни видео, изменяем сообщение без медиа
+#         try:
+#             await message.delete()
+#             message_callback = await message.answer(text=text, reply_markup=markup)
+#         except MessageCantBeEdited:
+#             message_callback = await message.answer(text=text, reply_markup=markup)
+#         except BadRequest:
+#             logging.info(text)
+#             try:
+#                 message_callback = await message.edit_caption(caption=text, reply_markup=markup)
+#             except MessageToEditNotFound:
+#                 try:
+#                     await message.delete()
+#                     message_callback = await message.answer(text=text, reply_markup=markup)
+#                 except MessageToDeleteNotFound:
+#                     message_callback = await message.answer(text=text, reply_markup=markup)
+#     if markup:
+#         if 'inline_keyboard' in markup:
+#             message.bot['last_message_id'] = message_callback.message_id
+
 async def edit_message(message: Union[types.Message, types.CallbackQuery], text=None, markup=None, photo=None, video=None):
     if isinstance(message, types.CallbackQuery):
         message = message.message
+    logging.info(f'message {message}, photo {photo}')
     if photo:  # если есть фото, изменяем сообщение с фото
         media = InputMedia(media=photo)
-        if message.photo:
-            logging.info('---------------------------------------')
-            try:
+        try:
+            last_message = message.bot["last_message"]
+            logging.info(f'last_message {last_message}')
+            if last_message.photo:
                 await message.edit_media( media=media )
-            except BadRequest:
-                pass
-            new_text = await text_separator(text = text, photo=True)
-            logging.info(len(new_text))
-            if len(new_text) > 1:
-                counter = 0
-                for mess in new_text:
+                new_text = await text_separator(text = text, photo=True)
+                logging.info(len(new_text))
+                if len(new_text) > 1:
+                    counter = 0
+                    for mess in new_text:
+                        try:
+                            if counter == 0:
+                                message_callback = await message.edit_caption( caption=mess)
+                            else:
+                                message_callback = await message.answer( text=mess, reply_markup=markup)
+                        except MessageCantBeEdited:
+                            message_callback = await message.answer_photo( photo=photo, caption=mess, reply_markup=markup )
+                        except BadRequest:
+                            message_callback = await message.answer_photo( photo=photo, caption=mess, reply_markup=markup )
+                else:
                     try:
-                        if counter == 0:
-                            message_callback = await message.edit_caption( caption=mess)
-                        else:
-                            message_callback = await message.answer( text=mess, reply_markup=markup)
+                        message_callback = await message.edit_caption( caption=new_text[0],reply_markup=markup )
                     except MessageCantBeEdited:
-                        message_callback = await message.answer_photo( photo=photo, caption=mess, reply_markup=markup )
+                        message_callback = await message.answer_photo(photo=photo, caption=new_text[0], reply_markup=markup)
                     except BadRequest:
-                        message_callback = await message.answer_photo( photo=photo, caption=mess, reply_markup=markup )
+                        message_callback = await message.answer_photo( photo=photo, caption=new_text[0], reply_markup=markup)
             else:
+                new_text = await text_separator(text = text, photo=True)
                 try:
-                    logging.info( '--------------------------------------1' )
-                    message_callback = await message.edit_caption( caption=new_text[0],reply_markup=markup )
-                except MessageCantBeEdited:
-                    logging.info( '--------------------------------------2' )
-
-                    message_callback = await message.answer_photo(photo=photo, caption=new_text[0], reply_markup=markup)
-                except BadRequest:
-                    logging.info( '--------------------------------------3' )
-
-                    message_callback = await message.answer_photo( photo=photo, caption=new_text[0], reply_markup=markup)
-        else:
-            new_text = await text_separator(text = text, photo=True)
-            logging.info('--------------------------------------8')
-            try:
-                await message.delete()
-            except MessageToDeleteNotFound:
-                pass
-            if len(new_text) > 1:
-                counter = 0
-                for mess in new_text:
-                    if counter == 0:
-                        logging.info( '--------------------------------------1' )
-                        message_callback = await message.answer_photo(photo=photo,caption=mess)
-                        counter += 1
-                    else:
-                        logging.info( '--------------------------------------2' )
-                        counter += 1
-                        if counter == len(new_text):
-                            logging.info( '--------------------------------------3' )
-                            message_callback = await message.answer(text=mess, reply_markup=markup)
+                    await message.delete()
+                except MessageToDeleteNotFound:
+                    pass
+                if len(new_text) > 1:
+                    counter = 0
+                    for mess in new_text:
+                        if counter == 0:
+                            message_callback = await message.answer_photo(photo=photo,caption=mess)
+                            counter += 1
                         else:
-                            logging.info( '--------------------------------------4' )
-                            message_callback = await message.answer(text=mess)
-            else:
-                message_callback = await message.answer_photo( photo=photo, caption=new_text[0], reply_markup=markup )
+                            counter += 1
+                            if counter == len(new_text):
+                                message_callback = await message.answer(text=mess, reply_markup=markup)
+                            else:
+                                message_callback = await message.answer(text=mess)
+                else:
+                    message_callback = await message.answer_photo( photo=photo, caption=new_text[0], reply_markup=markup )
+        except KeyError:
+            pass
     elif video:
         # если есть видео, изменяем сообщение с видео
         # await message.edit_caption( caption=text, reply_markup=markup  )
@@ -199,24 +283,61 @@ async def edit_message(message: Union[types.Message, types.CallbackQuery], text=
     else:
         # если нет ни фото, ни видео, изменяем сообщение без медиа
         try:
-            await message.delete()
-            message_callback = await message.answer(text=text, reply_markup=markup)
-        except MessageCantBeEdited:
-            message_callback = await message.answer(text=text, reply_markup=markup)
-        except BadRequest:
-            logging.info(text)
-            try:
-                message_callback = await message.edit_caption(caption=text, reply_markup=markup)
-            except MessageToEditNotFound:
+            last_message = message.bot["last_message"]
+            logging.info(last_message)
+            last_message:types.Message
+            if last_message.photo:
+                await message.bot.delete_message(chat_id=message.chat.id, message_id=last_message.message_id)
+                logging.info(text)
+                message_callback = await message.answer(text=text, reply_markup=markup)
+            else:
+                if last_message.reply_markup:
+                    try: #в тот момент когда не было клавы у последнего сообщения, а данные в last_message остались от предполеднего
+                        await message.bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=last_message.message_id)
+                    except (MessageNotModified, MessageToEditNotFound) as e:
+                        logging.info(e)
+                await message.delete()
+                new_text = await text_separator(text = text, photo=True)
                 try:
-                    await message.delete()
-                    message_callback = await message.answer(text=text, reply_markup=markup)
-                except MessageToDeleteNotFound:
-                    message_callback = await message.answer(text=text, reply_markup=markup)
-    if markup:
-        if 'inline_keyboard' in markup:
-            message.bot['last_message_id'] = message_callback.message_id
+                    if len(new_text) == 1:
+                        message_callback = await message.bot.edit_message_text(text=text, chat_id=message.chat.id,
+                                                                   message_id=last_message.message_id, reply_markup=markup)
+                    else:
+                        counter = 0
+                        for mess in new_text:
+                            if counter == 0:
+                                message_callback = await message.bot.edit_message_text( text=mess,
+                                                                                        chat_id=message.chat.id,
+                                                                                        message_id=last_message.message_id )
+                                counter+= 1
+                            elif counter == len(new_text):
+                                message_callback = await message.bot.send_message( text=mess, chat_id=message.chat.id,
+                                                                                   reply_markup=markup )
+                            else:
+                                message_callback = await message.bot.send_message( text=mess, chat_id=message.chat.id,
+                                                                                   )
+                                counter += 1
 
+                except MessageToEditNotFound:
+                    if len(new_text) == 1:
+                        message_callback = await message.bot.send_message( text=text, chat_id=message.chat.id,
+                                                                                reply_markup=markup )
+                    else:
+                        counter = 0
+                        for mess in new_text:
+                            counter+=1
+                            if counter == len( new_text ):
+                                message_callback = await message.bot.send_message( text=mess, chat_id=message.chat.id,
+                                                                                   reply_markup=markup )
+                            else:
+                                message_callback = await message.bot.send_message( text=mess, chat_id=message.chat.id,
+                                                                                   )
+        except (KeyError, MessageToDeleteNotFound):
+            logging.info('KeyError')
+            message_callback = await message.answer(text=text, reply_markup=markup)
+    if message_callback.reply_markup:
+        if 'inline_keyboard' in markup:
+            message.bot['last_message'] = message_callback
 
 
 
@@ -321,7 +442,7 @@ async def profile_viewer(message:types.Message, text, photo=None, markup=None):
         logging.info(msg='------------Else---------------')
     if markup:
         if markup.inline_keyboard:
-            message.bot['last_message_id'] = message_callback.message_id
+            message.bot['last_message'] = message_callback
 
 
 async def add_user_func(data):

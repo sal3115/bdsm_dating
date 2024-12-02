@@ -37,7 +37,7 @@ async def edit_about_me(callback:types.CallbackQuery):
     if isinstance(callback, types.CallbackQuery):
         message = callback.message
     user_id = message.chat.id
-    kb = await cancel_kb()
+    kb = await cancel_inline_kb()
     session_maker = message.bot.data['session_maker']
     user_anket = await select_user( session=session_maker, user_id=user_id )
     about_me = user_anket[0]['about_my_self']

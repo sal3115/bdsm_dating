@@ -139,6 +139,7 @@ async def view_my_profile_callback(call:types.CallbackQuery, callback_data:dict=
         return
     elif callback == 'profile':
         await view_my_profile(call=call)
+        return
     kb = await view_my_profile_keyboard(call_back=callback)
     await edit_message( message=call, text=text, markup=kb)
 
