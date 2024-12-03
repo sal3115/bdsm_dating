@@ -11,7 +11,7 @@ from sqlalchemy.orm import aliased, Session
 from tgbot import config
 from tgbot.models.Base_model import Base
 from tgbot.models.Users import Users, LikeDislikeTable, PhotoTable, ComplaintsTable, \
-    RejectingVerification, BlockUserDescription, PaidTable, PriceSubscription
+    RejectingVerification, BlockUserDescription, PaidTable, PriceSubscription, DailyReactionTable
 from tgbot.models.engine import create_engine_db, get_session_maker
 
 logging.basicConfig(
@@ -53,7 +53,8 @@ async def insert_users(session, params, value = None):
 
 
 async def insert_like_dis(session, user_id, partner_id, reaction:bool=False):
-    insert_ld_table = LikeDislikeTable(id_user=user_id, id_partner = partner_id, reaktion=reaction)
+    date_now = datetime.datetime.now().date()
+    insert_ld_table = LikeDislikeTable(id_user=user_id, id_partner = partner_id, reaktion=reaction, date_reaktion=date_now)
     with session() as ses:
         with ses.begin():
             try:
@@ -62,6 +63,15 @@ async def insert_like_dis(session, user_id, partner_id, reaction:bool=False):
                 logging.info(msg=[e.args, e])
                 pass
 
+async def insert_daily_reaktion(session, user_id, partner_id, reaction:bool=False):
+    insert_ld_table = DailyReactionTable(id_user=user_id, id_partner = partner_id, reaktion=reaction)
+    with session() as ses:
+        with ses.begin():
+            try:
+                ses.add(insert_ld_table)
+            except IntegrityError as e:
+                logging.info(msg=[e.args, e])
+                pass
 
 async def insert_complaints(session, id_user, id_user_complaints, complaints, decision=False):
     insert_complaints_table = ComplaintsTable(id_user=id_user, id_user_complaints = id_user_complaints,
@@ -165,7 +175,7 @@ async def select_user_anketa(session, user_id):
             ).filter(
                 Users.user_id != user_id,
                 ~Users.user_id.in_(
-                    select( LikeDislikeTable.id_partner ).filter( LikeDislikeTable.id_user == user_id )
+                    select( DailyReactionTable.id_partner ).filter( DailyReactionTable.id_user == user_id )
                 ),
                 Users.moderation == True,
                 Users.birthday <= max_birthday,  # Добавляем фильтр на максимальный возраст
@@ -354,6 +364,24 @@ async def select_check_mutual_interest(session, user_id, partner_id):
     request = select(LikeDislikeTable.id_user).where(
         and_(LikeDislikeTable.id_user == partner_id, LikeDislikeTable.id_partner==user_id),
     ).where(LikeDislikeTable.reaktion == True)
+    with session() as ses:
+        with ses.begin():
+            answer = ses.execute( request )
+            answer2 = [dict( r._mapping ) for r in answer.fetchall()]
+            return answer2
+async def select_check_interest(session, user_id, partner_id):
+    request = select(*[col for col in ComplaintsTable.__table__.c]).where(
+        and_(LikeDislikeTable.id_user == partner_id, LikeDislikeTable.id_partner==user_id),
+    )
+    with session() as ses:
+        with ses.begin():
+            answer = ses.execute( request )
+            answer2 = [dict( r._mapping ) for r in answer.fetchall()]
+            return answer2
+async def select_check_daily_interest(session, user_id, partner_id):
+    request = select(*[col for col in ComplaintsTable.__table__.c]).where(
+        and_(DailyReactionTable.id_user == partner_id, DailyReactionTable.id_partner==user_id),
+    )
     with session() as ses:
         with ses.begin():
             answer = ses.execute( request )
@@ -655,3 +683,19 @@ async def delete_paid(session, user_id):
         with ses.begin():
             ses: Session
             request = ses.query( PaidTable ).filter_by( user_id=user_id).delete()
+
+
+async def delete_daily_reaction(session):
+    with session() as ses:
+        with ses.begin():
+            ses: Session
+            request = ses.query( DailyReactionTable ).delete()
+
+
+async def delete_reaction_like_dislike_table(session):
+    month = relativedelta(months=1)
+    date_now = datetime.datetime.now().date() - month
+    with session() as ses:
+        with ses.begin():
+            ses: Session
+            request = ses.query( LikeDislikeTable ).where( (LikeDislikeTable.date_reaktion ) <= date_now  ).delete()

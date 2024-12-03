@@ -353,14 +353,13 @@ async def ok_recommendation():
 #     markup.add( InlineKeyboardButton( text='Оформить подписку', callback_data=my_profile_cd.new( callback='get_subscribe', user_id=user_id  ) ) )
 #     return markup
 
-my_profile_new_cd= CallbackData('mpn_cb', 'callback', 'user_id')
+my_profile_new_cd= CallbackData('mpn_cb', 'callback')
 async def my_profile_kb_new(user_id):
     markup = InlineKeyboardMarkup( row_width=1)
-    markup.add(InlineKeyboardButton( text='Посмотреть анкету', callback_data=my_profile_new_cd.new( callback='view_profile',
-                                                                                             user_id=user_id ) ) )
+    markup.add(InlineKeyboardButton( text='Посмотреть анкету', callback_data=my_profile_new_cd.new( callback='view_profile') ) )
     markup.add(
-        InlineKeyboardButton( text='Изменить анкету', callback_data=my_profile_new_cd.new( callback='edit_profile', user_id=user_id ) ) )
-    markup.add( InlineKeyboardButton( text='Оформить подписку', callback_data=my_profile_new_cd.new( callback='get_subscribe', user_id=user_id  ) ) )
+        InlineKeyboardButton( text='Изменить анкету', callback_data=my_profile_new_cd.new( callback='edit_profile' ) ) )
+    markup.add( InlineKeyboardButton( text='Оформить подписку', callback_data=my_profile_new_cd.new( callback='get_subscribe' ) ) )
     return markup
 
 
@@ -391,7 +390,9 @@ async def edit_profile_kb():
     markup.add(
         InlineKeyboardButton( text='Изменить мин и макс возраст',
                               callback_data=edit_profile_cd.new( callback='edit_min_max_age' ) ) )
-
+    markup.add(
+        InlineKeyboardButton( text='Назад',
+                              callback_data=edit_profile_cd.new( callback='back' ) ) )
 
     return markup
 
@@ -400,15 +401,25 @@ view_my_profile_cd = CallbackData('view_m_cd', 'callback')
 async def view_my_profile_keyboard(call_back=None):
     markup = InlineKeyboardMarkup(row_width=2)
     if call_back=='about_me':
-        markup.add(InlineKeyboardButton(text='Анкета', callback_data=view_my_profile_cd.new(callback='profile')))
+        markup.add(
+            InlineKeyboardButton( text='Посмотреть анкету',
+                                  callback_data=my_profile_new_cd.new( callback='view_profile' ) ) )
     else:
         markup.add(InlineKeyboardButton(text='📝О себе', callback_data=view_my_profile_cd.new(callback='about_me')))
+
     # if call_back=='video_card':
     #     markup.add(InlineKeyboardButton(text='Анкета', callback_data=view_my_profile_cd.new(callback='profile')))
     # else:
     #     markup.add(InlineKeyboardButton(text='📽Видеовизитка', callback_data=view_my_profile_cd.new(callback='video_card')))
-    markup.insert(InlineKeyboardButton(text='📸Еще фото',
+    markup.add(InlineKeyboardButton(text='📸Еще фото',
                                        callback_data=view_my_profile_cd.new(callback='more_photos')))
+
+    markup.add(
+        InlineKeyboardButton( text='Изменить анкету',
+                              callback_data=my_profile_new_cd.new( callback='edit_profile' ) ) )
+    markup.add( InlineKeyboardButton( text='Оформить подписку',
+                                      callback_data=my_profile_new_cd.new( callback='get_subscribe') ) )
+
     return markup
 
 

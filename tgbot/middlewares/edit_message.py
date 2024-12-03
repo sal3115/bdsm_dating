@@ -6,6 +6,7 @@ from aiogram.dispatcher.handler import current_handler
 from aiogram.dispatcher.middlewares import LifetimeControllerMiddleware, BaseMiddleware
 from aiogram.types.base import TelegramObject
 from aiogram.utils import exceptions
+from aiogram.utils.exceptions import MessageToEditNotFound
 
 
 # class ReplaceOrDeleteInlineKeyboard(BaseMiddleware):
@@ -35,7 +36,7 @@ class ReplaceOrDeleteInlineKeyboard(BaseMiddleware):
             await message.bot.edit_message_reply_markup(chat_id=message.chat.id, message_id=last_message_id)
         except KeyError:
             pass
-        except exceptions.MessageToDeleteNotFound:
+        except (exceptions.MessageToDeleteNotFound, MessageToEditNotFound):
             pass
         except exceptions.MessageNotModified:
             pass
@@ -79,6 +80,15 @@ class None_last_message(BaseMiddleware):
         if 'pre_checkout_query' in message:
             return
         try:
-            message.bot["last_message_id"] = None
+            logging.info(f'last_message')
+            message.bot["last_message"] = None
+        except KeyError:
+            pass
+    async def on_post_process_callback_query(self, callback_query, results, data: dict):
+        if 'pre_checkout_query' in callback_query.message:
+            return
+        try:
+            logging.info(f'last_message')
+            callback_query.bot["last_message"] = None
         except KeyError:
             pass

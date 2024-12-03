@@ -14,7 +14,7 @@ from tgbot.handlers.edit_profile import register_edit_profile
 from tgbot.handlers.exit_profile import exit_profile_handler
 from tgbot.handlers.favorites import favorites_handler
 from tgbot.handlers.main_menu import main_menu_handler
-from tgbot.handlers.main_profile import main_profile_handler
+# from tgbot.handlers.main_profile import main_profile_handler
 from tgbot.handlers.moderation import moderator_handler
 from tgbot.handlers.new_anketa import register_anketa
 from tgbot.handlers.other_handlers import outher_handler
@@ -26,6 +26,7 @@ from tgbot.middlewares.edit_message import ReplaceOrDeleteInlineKeyboard, \
 from tgbot.middlewares.last_date_activ_day import DbMiddleware
 from tgbot.models.Base_model import Base
 from tgbot.models.engine import create_engine_db, get_session_maker, proceed_schemas
+from tgbot.services.auxiliary_functions import shedule_jobs
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +35,9 @@ def register_all_middlewares(dp):
     dp.setup_middleware(AlbumMiddleware())
     dp.setup_middleware(DbMiddleware())
     dp.setup_middleware(ThrottlingMiddleware())
-    # dp.setup_middleware(ReplaceOrDeleteInlineKeyboard())
-    # dp.setup_middleware(ReplaceOrDeleteLastMessage())
-    dp.setup_middleware(None_last_message())
+    dp.setup_middleware(ReplaceOrDeleteInlineKeyboard())
+    dp.setup_middleware(ReplaceOrDeleteLastMessage())
+    # dp.setup_middleware(None_last_message())
 
 
 def register_all_filters(dp):
@@ -56,7 +57,7 @@ def register_all_handlers(dp):
     main_menu_handler(dp)
     exit_profile_handler(dp)
     favorites_handler(dp)
-    main_profile_handler(dp)
+    # main_profile_handler(dp)
     register_edit_profile(dp)
     register_hello(dp)
     register_anketa(dp)
@@ -79,7 +80,7 @@ async def main():
     proceed_schemas(Base.metadata,engine=engine)
     bot_info = await bot.get_me()
     logger.info(f"Bot name{bot_info}")
-
+    await shedule_jobs()
     bot['config'] = config
     bot['session_maker'] = session_maker
 

@@ -13,8 +13,10 @@ from tgbot.keyboards.reply import main_menu_kb
 from tgbot.misc.states import ComplaintsUser
 from tgbot.models.sql_request import select_user_anketa, select_photo, insert_like_dis, select_user, \
     select_user_profile_like, select_user_profile_like_me, select_user_profile_mutual_interest, select_first_photo, \
-    insert_complaints, select_user_profile_not_interest, select_check_mutual_interest, select_check_interest
-from tgbot.services.auxiliary_functions import edit_message, profile_viewer, format_text_profile
+    insert_complaints, select_user_profile_not_interest, select_check_mutual_interest, select_check_interest, \
+    insert_daily_reaktion
+from tgbot.services.auxiliary_functions import edit_message, profile_viewer, format_text_profile, \
+    insert_like_dislake_all
 from tgbot.services.calculate_age import calculateAge
 from tgbot.services.photo_and_text import text_dict, text_main_menu
 
@@ -32,7 +34,6 @@ async def blocking_messages(message:types.Message):
 
 
 async def view_questionnaires(message:Union[types.Message, types.CallbackQuery], page=0, type_profile=None):
-    callback_id = None
     if isinstance(message, types.CallbackQuery):
         callback_id = message.id
         message = message.message
@@ -52,12 +53,7 @@ async def view_questionnaires(message:Union[types.Message, types.CallbackQuery],
     logging.info(['---------len anket---------', len(ankets_data)])
     if len(ankets_data) == 0:
         text = 'На данный момент анкет больше нет'
-        if callback_id:
-            await message.bot.answer_callback_query(callback_query_id=callback_id, text=text)
-        else:
-            if message.reply_markup:
-                await message.edit_reply_markup()
-            await edit_message(message=message,text=text)
+        await edit_message( message=message, text=text )
         return
     if page+1 > len(ankets_data):
         page = 0
@@ -92,9 +88,9 @@ async def view_questionnaires(message:Union[types.Message, types.CallbackQuery],
     photos = await select_first_photo( session=session_maker, user_id=user_id_anket )
     if len(photos)>0:
         photo= photos[0]['photo_id']
-        await edit_message(message=message, text=text, photo=photo, markup=kb)
+        await profile_viewer(message=message, text=text, photo=photo, markup=kb)
     else:
-        await edit_message(message=message, text=text, markup=kb)
+        await profile_viewer(message=message, text=text, markup=kb)
 
 
 async def scrolling_photo_func(call: types.CallbackQuery, user_id_anket,page:int ,counter=0, type_profiles=None):
@@ -156,45 +152,39 @@ async def processing_dating_keyboard(call:types.CallbackQuery, callback_data:dic
             await call.answer('Вы не прошли модерацию, пожалуйста ждите.')
             return
         else:
-            check_interest = await select_check_interest(session=session_maker, user_id=user_id, partner_id=user_id_anket)
-            if len(check_interest) == 0:
-                check_mutual_like = await select_check_mutual_interest(session=session_maker, user_id=user_id, partner_id=user_id_anket)
-                if len(check_mutual_like) > 0:
-                    user_name = user_anket[0]['username']
-                    user_link = f'https://t.me/{user_name}'
-                    kb = await dating_keyboard( user_id=user_id_anket, page=page, call_back=callback, url=user_link )
-                    await call.message.edit_reply_markup(reply_markup=kb)
-                    await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
-                    await call.answer('У вас взаимный интерес')
-                    try:
-                        text = 'Здравствуйте. Один из пользователей понравившийся вам проявил взаимный интерес⚡️. ' \
-                               'Зайдите в раздел «❤️Изранное», «Взаимный интерес» чтобы начать общение💌.'
-                        await call.bot.send_message( chat_id=user_id_anket, text=text )
-                    except:
-                        pass
-                else:
-                    await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
-                    await view_questionnaires( message=call, page=page )
-                    try:
-                        text = 'Здравствуйте. Одному из пользователей понравилась ваша анкета⚡️. Зайдите в раздел ' \
-                               '«❤️Изранное», «Интересуются мной» чтобы узнать кто это👀. '
-                        await call.bot.send_message( chat_id=user_id_anket, text=text )
-                    except:
-                        pass
+            check_mutual_like = await select_check_mutual_interest(session=session_maker, user_id=user_id, partner_id=user_id_anket)
+            if len(check_mutual_like) > 0:
+                user_name = user_anket[0]['username']
+                user_link = f'https://t.me/{user_name}'
+                kb = await dating_keyboard( user_id=user_id_anket, page=page, call_back=callback, url=user_link )
+                await call.message.edit_reply_markup(reply_markup=kb)
+                await insert_like_dislake_all(session=session_maker, user_id=user_id, partner_user_id=user_id_anket, reaction=True)
+                await call.answer('У вас взаимный интерес')
+                await view_questionnaires( message=call, page=page )
+                try:
+                    text = 'У вас взаимный интерес. ' \
+                           'Зайдите в раздел «Лайки», «Взаимный интерес» чтобы начать общение.'
+                    await call.bot.send_message( chat_id=user_id_anket, text=text )
+                except:
+                    pass
             else:
-                await call.message.delete()
+                await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
+                await insert_daily_reaktion(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
+                await view_questionnaires( message=call, page=page )
+                try:
+                    text = 'Кому то понравилась ваша анкета. Зайдите в раздел ' \
+                           '«Лайки», «Интересуются мной» чтобы узнать кто это. '
+                    await call.bot.send_message( chat_id=user_id_anket, text=text )
+                except:
+                    pass
     elif callback == 'dont_show':
-        check_interest = await select_check_interest( session=session_maker, user_id=user_id, partner_id=user_id_anket )
-        if len( check_interest ) == 0:
-            check_moderation = await select_user( session=session_maker, user_id=user_id )
-            if check_moderation[0]['moderation'] == False:
-                await call.answer( 'Вы не прошли модерацию, пожалуйста ждите.' )
-                return
-            else:
-                await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=False )
-                await view_questionnaires( message=call, page=page  )
+        check_moderation = await select_user( session=session_maker, user_id=user_id )
+        if check_moderation[0]['moderation'] == False:
+            await call.answer( 'Вы не прошли модерацию, пожалуйста ждите.' )
+            return
         else:
-            await call.message.delete()
+            await insert_like_dislake_all(session=session_maker, user_id=user_id, partner_user_id=user_id_anket, reaction=False)
+            await view_questionnaires( message=call, page=page  )
     elif callback == 'complain':
         text = 'Напишите свою жалобу'
         kb = await cancel_inline_kb()

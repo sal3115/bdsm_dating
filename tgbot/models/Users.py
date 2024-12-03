@@ -89,12 +89,38 @@ class LikeDislikeTable(Base):
     id_user = Column(BigInteger, ForeignKey("Users.user_id"))
     id_partner = Column(BigInteger)
     reaktion = Column(Boolean)
+    date_reaktion = Column(Date)
+
+
+    def __init__(self, id_user, id_partner, reaktion, date_reaktion):
+        self.id_user = id_user
+        self.id_partner = id_partner
+        self.reaktion = reaktion
+        self.date_reaktion = date_reaktion
+    def __repr__(self):
+        obj = {
+            'id': self.id,
+            'id_user': self.id_user,
+            'id_partner': self.id_partner,
+            'reaktion': self.reaktion,
+            'date_reaktion': self.date_reaktion,
+        }
+        str_obj = json.dumps(obj)
+        return str_obj
+
+
+class DailyReactionTable(Base):
+    __tablename__ = 'daily_reaction_table'
+
+    id = Column(Integer , primary_key=True)
+    id_user = Column(BigInteger, ForeignKey("Users.user_id"))
+    id_partner = Column(BigInteger)
+    reaktion = Column(Boolean)
 
     def __init__(self, id_user, id_partner, reaktion):
         self.id_user = id_user
         self.id_partner = id_partner
         self.reaktion = reaktion
-
     def __repr__(self):
         obj = {
             'id': self.id,

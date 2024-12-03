@@ -11,8 +11,8 @@ from tgbot.keyboards.inline import favorite_profile_kb, interesting_cb, \
     scrolling_photos_not_inter_me_cb
 from tgbot.misc.states import ComplaintsUser
 from tgbot.models.sql_request import select_user_profile_like, select_photo, select_user, insert_like_dis, \
-     delete_reaction
-from tgbot.services.auxiliary_functions import edit_message, check_like_dislike
+    delete_reaction, insert_daily_reaktion
+from tgbot.services.auxiliary_functions import edit_message, check_like_dislike, insert_like_dislake_all
 
 
 async def favourites_profile_no_paid(message: types.Message):
@@ -98,7 +98,7 @@ async def processing_favourites_keyboard(call:types.CallbackQuery, callback_data
         await scrolling_photo_func(call=call, user_id_anket=user_id_anket, page=page, type_profiles='favorites_profile')
     elif callback == 'interesting':
         await view_questionnaires(message=call, page=page+1, type_profile='favorites_profile')
-        await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
+        await insert_like_dislake_all( session=session_maker, user_id=user_id, partner_user_id=user_id_anket, reaction=True)
     elif callback == 'remove_like':
         await delete_reaction(session=session_maker, user_id=user_id, id_partner=user_id_anket)
         await view_questionnaires( message=call, page=page + 1, type_profile='favorites_profile' )
@@ -154,9 +154,11 @@ async def processing_interested_me_keyboard(call:types.CallbackQuery, callback_d
         await scrolling_photo_func(call=call, user_id_anket=user_id_anket, page=page, type_profiles='interested_me')
     elif callback == 'interesting':
         await view_questionnaires(message=call, page=page+1, type_profile='interested_me')
-        await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
+        await insert_like_dislake_all( session=session_maker, user_id=user_id, partner_user_id=user_id_anket,
+                                       reaction=True )
     elif callback == 'dont_show':
-        await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=False )
+        await insert_like_dislake_all( session=session_maker, user_id=user_id, partner_user_id=user_id_anket,
+                                       reaction=False )
         await view_questionnaires( message=call, page=page + 1, type_profile='interested_me' )
     elif callback == 'complain':
         text = 'Напишите свою жалобу'
@@ -196,7 +198,8 @@ async def processing_not_interested_me_keyboard(call:types.CallbackQuery, callba
         await scrolling_photo_func(call=call, user_id_anket=user_id_anket, page=page, type_profiles='not_interested_me')
     elif callback == 'interesting':
         await view_questionnaires(message=call, page=page+1, type_profile='not_interested_me')
-        await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
+        await insert_like_dislake_all( session=session_maker, user_id=user_id, partner_user_id=user_id_anket,
+                                       reaction=True )
     elif callback == 'remove_dislike':
         await delete_reaction(session=session_maker, user_id=user_id, id_partner=user_id_anket)
         await view_questionnaires( message=call, page=page + 1, type_profile='not_interested_me' )
@@ -265,19 +268,13 @@ async def processing_mutual_interest_keyboard(call:types.CallbackQuery, callback
     elif callback == 'more_photos':
         await scrolling_photo_func(call=call, user_id_anket=user_id_anket, page=page, type_profiles='mutual_interest')
     elif callback == 'interesting':
-        check_interesting = await check_like_dislike(session=session_maker, user_id=user_id, partner_user_id=user_id_anket)
-        if check_interesting:
-            await view_questionnaires(message=call, page=page+1, type_profile='mutual_interest')
-            await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
-        else:
-            await call.message.delete()
+        await view_questionnaires(message=call, page=page+1, type_profile='mutual_interest')
+        await insert_like_dislake_all( session=session_maker, user_id=user_id, partner_user_id=user_id_anket,
+                                       reaction=True )
     elif callback == 'dont_show':
-        check_interesting = await check_like_dislike( session=session_maker, user_id=user_id, partner_user_id=user_id_anket )
-        if check_interesting:
-            await view_questionnaires( message=call, page=page + 1, type_profile='mutual_interest' )
-            await insert_like_dis(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=False )
-        else:
-            await call.message.delete()
+        await view_questionnaires( message=call, page=page + 1, type_profile='mutual_interest' )
+        await insert_like_dislake_all( session=session_maker, user_id=user_id, partner_user_id=user_id_anket,
+                                       reaction=False )
     elif callback == 'profile':
         await view_questionnaires( message=call, page=page, type_profile='mutual_interest' )
     elif callback == 'following_anket':
