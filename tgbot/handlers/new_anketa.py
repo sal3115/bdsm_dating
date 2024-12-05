@@ -1,3 +1,4 @@
+import datetime
 import logging
 from typing import Union, List
 
@@ -7,12 +8,14 @@ from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram.dispatcher import FSMContext
 
 from tgbot.keyboards.inline import func_kb_back_2, func_kb_gender, yes_no_button, \
-    func_kb_position, yes_no_cb, interaction_format_button, interaction_format_cb
+    func_kb_position, yes_no_cb, interaction_format_button, interaction_format_cb, yes_no_kb_confirm_city, \
+    yes_no_cb_confirm_city
 from tgbot.keyboards.reply import main_menu_kb
 from tgbot.misc.states import FSM_hello
 from tgbot.models.sql_request import insert_users, insert_photo, update_first_photo
 from tgbot.services.anketa_utulites import checking_russian_letters
 from tgbot.services.auxiliary_functions import date_formats, add_photo_func, check_city
+from tgbot.services.calculate_age import calculateAge
 from tgbot.services.photo_and_text import text_dict
 
 
@@ -62,7 +65,11 @@ async def gender_choice_partner(arg: Union[Message, CallbackQuery], state: FSMCo
         message = arg
     kb = await func_kb_back_2()
     if message.text == '🔙Вернуться НАЗАД':
-        await FSM_hello.your_date_of_birth.set()
+        gender = data['gender']
+        kb = await func_kb_gender( gender=gender )
+        text = text_dict['qw_6_1']
+        await message.answer( text=text, reply_markup=kb )
+        await FSM_hello.choice_partner.set()
     if message.reply_markup:
         await message.edit_reply_markup()
         gender = arg.data
@@ -100,6 +107,8 @@ async def choice_partner_date_of_birth(arg: Union[Message, CallbackQuery], state
         message = arg
     kb = await func_kb_back_2()
     if message.text == '🔙Вернуться НАЗАД':
+        text = text_dict['qw_7']
+        await message.answer( text=text, reply_markup=kb )
         await FSM_hello.your_date_of_birth.set()
     if message.reply_markup:
         gender_partner = arg.data
@@ -129,9 +138,16 @@ async def birth_city(message: Message, state: FSMContext):
         await message.answer(text=text, reply_markup=kb)
         await FSM_hello.your_city.set()
     elif check_date:
-        await state.update_data(birthday=check_date)
-        await message.answer(text=text, reply_markup=kb)
-        await FSM_hello.your_city.set()
+        age = await calculateAge(check_date)
+        if age >= 18:
+            await state.update_data(birthday=check_date)
+            await message.answer(text=text, reply_markup=kb)
+            await FSM_hello.your_city.set()
+        else:
+            text = '❗️❗️❗️❗️Заполнение анкеты прервано, вам нет 18 лет, просьба покинуть ресурс❗️❗️❗️❗️'
+            await message.answer( text=text, reply_markup=None )
+            await state.finish()
+            return
     else: # запрос даты рождения
         text = text_dict['qw_7']
         kb = await func_kb_back_2()
@@ -140,13 +156,7 @@ async def birth_city(message: Message, state: FSMContext):
     data = await state.get_data()
     logging.info( msg=[data, await state.get_state()])
 #ловим город спрашиваем позиция в теме
-#TODO позиция в теме добавить в БД
-async def city_position(message: Message, state: FSMContext):
-    text = text_dict['qw_10']
-    kb = await func_kb_position( message )
-    if message.text == '🔙Вернуться НАЗАД':
-        await FSM_hello.your_position.set()
-        await message.answer( text=text, reply_markup=kb )
+async def city_city_confirm(message: Message, state: FSMContext):
     city = message.text
     check_rus_city = await checking_russian_letters( city )
     if check_rus_city:
@@ -158,11 +168,13 @@ async def city_position(message: Message, state: FSMContext):
         await FSM_hello.your_city.set()
         return
     if city:
-        await state.update_data(city=city[1])
+        await state.update_data( city=city[1] )
+        text = text_dict['qw_9_3'].format(city[1])
+        kb = await yes_no_kb_confirm_city()
         await message.answer( text=text, reply_markup=kb )
-        await FSM_hello.your_position.set()
+        await FSM_hello.your_city_confirm.set()
     else:
-        text = text_dict['qw_9_2'] # спрашиваем город русскими буквами
+        text = text_dict['qw_9_2'] # нет города в базе
         kb = await func_kb_back_2()
         await message.answer(text=text, reply_markup=kb)
         await FSM_hello.your_city.set()
@@ -170,6 +182,33 @@ async def city_position(message: Message, state: FSMContext):
     data = await state.get_data()
     logging.info( msg=[data, await state.get_state()])
 # ловим выбор позиции, задаем вопрос позицию партнера
+
+async def city_confirm_position(callback: Union[types.CallbackQuery, types.CallbackQuery], state:FSMContext, callback_data:dict=None):
+    text = text_dict['qw_10']
+    kb = await func_kb_position()
+    if isinstance(callback, types.Message):
+        await FSM_hello.your_position.set()
+        await callback.answer( text=text, reply_markup=kb )
+        return
+    call = callback_data['callback']
+    if call == 'yes':
+        await callback.message.answer( text=text, reply_markup=kb )
+        await FSM_hello.your_position.set()
+        await callback.answer()
+        await callback.message.edit_reply_markup()
+    elif call == 'no':
+        text = text_dict['qw_9']
+        kb = await func_kb_back_2()
+        await callback.message.answer(text=text, reply_markup=kb)
+        await state.update_data( city=None )
+        await FSM_hello.your_city.set()
+        await callback.answer()
+        await callback.message.edit_reply_markup()
+    else:
+        text = 'Что-то пошло не так пришлите город еще раз'
+
+
+
 async def position_partner_position(arg: Union[Message, CallbackQuery], state: FSMContext):
     text = text_dict['qw_11'] # кого вы ищите
     kb = await func_kb_back_2()
@@ -178,14 +217,16 @@ async def position_partner_position(arg: Union[Message, CallbackQuery], state: F
         your_position = arg.data
         await state.update_data(your_position=your_position)
         await arg.message.edit_text(text=your_position, reply_markup=None)
-        kb = await func_kb_position( message, your_position=your_position)
+        kb = await func_kb_position(your_position=your_position)
         await message.answer(text=text, reply_markup=kb)
         await FSM_hello.partner_position.set()
         await arg.answer()
     if isinstance(arg, types.Message):
         if arg.text == '🔙Вернуться НАЗАД':
-            message = arg
-            await message.answer(text=text, reply_markup=kb)
+            data = await state.get_data()
+            your_position = data['your_position']
+            kb = await func_kb_position( your_position=your_position )
+            await arg.answer( text=text, reply_markup=kb )
             await FSM_hello.partner_position.set()
         else:
             await arg.delete()
@@ -312,8 +353,8 @@ async def max_age_another_city(message: Message, state:FSMContext):
             max_age = int(message.text)
             min_age = int(data['min_age'])
             if min_age > max_age:
-                await message.answer( text=f'Вы ввели минимальный возраст {min_age}, а максимальный такой {max_age}, '
-                                           f'пожалуйста введите корректный максимальный возраст' )
+                await message.answer( text=f'Вы ввели минимальный возраст {min_age}, а максимальный - {max_age}, '
+                                           f'пожалуйста, введите корректный максимальный возраст' )
                 return
             else:
                 await state.update_data(max_age=max_age)
@@ -334,7 +375,7 @@ async def another_city_interaction_format(message: Union[types.Message, types.Ca
     if isinstance(message, types.Message):
         if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
             await message.answer( text=text)
-            await FSM_hello.online_practice.set()
+            await FSM_hello.interaction_format.set()
             data = await state.get_data()
             logging.info( msg=[data, await state.get_state()])
         else:
@@ -406,11 +447,12 @@ async def back_button(message: Message, state: FSMContext):
     data = await state.get_data()
     levels = {
         "FSM_hello:your_gender": your_name,
-        "FSM_hello:your_date_of_birth": gender_choice_partner if 'gender_partner' in data else name_gender,
-        "FSM_hello:your_city": gender_choice_partner,
+        "FSM_hello:your_date_of_birth": gender_choice_partner,
+        "FSM_hello:your_city": choice_partner_date_of_birth,
+        'FSM_hello:your_city_confirm': birth_city,
         "FSM_hello:woman_woman": name_gender,
         "FSM_hello:your_position": birth_city,
-        "FSM_hello:partner_position": city_position,
+        "FSM_hello:partner_position": city_confirm_position,
         "FSM_hello:your_practice": position_partner_position,
         "FSM_hello:your_tabu": partner_position_practice,
         "FSM_hello:your_about_me": practice_tabu,
@@ -461,7 +503,10 @@ def register_anketa(dp:Dispatcher):
     dp.register_callback_query_handler( gender_choice_partner, state=FSM_hello.your_gender)
     dp.register_callback_query_handler(choice_partner_date_of_birth, state=FSM_hello.choice_partner)
     dp.register_message_handler( birth_city,  state=FSM_hello.your_date_of_birth )
-    dp.register_message_handler( city_position, state=FSM_hello.your_city )
+
+    dp.register_message_handler( city_city_confirm, state=FSM_hello.your_city )
+    dp.register_callback_query_handler(city_confirm_position, yes_no_cb_confirm_city.filter(), state=FSM_hello.your_city_confirm)
+
     dp.register_message_handler( position_partner_position, state=FSM_hello.your_position  )
     dp.register_callback_query_handler( position_partner_position, state=FSM_hello.your_position  )
     dp.register_message_handler( partner_position_practice, state=FSM_hello.partner_position )

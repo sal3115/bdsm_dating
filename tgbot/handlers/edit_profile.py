@@ -19,6 +19,7 @@ from tgbot.models.sql_request import select_user, update_user_info, select_rejec
 from tgbot.services.anketa_utulites import checking_russian_letters
 from tgbot.services.auxiliary_functions import edit_message, text_separator, add_photo_func, profile_viewer, \
     date_formats, check_city, format_text_profile
+from tgbot.services.calculate_age import calculateAge
 
 
 async def changing_moderation(session, user_id):
@@ -161,7 +162,7 @@ async def scroll_photo_main_profile(call:types.CallbackQuery, callback_data:dict
 async def paid_subscription(call: types.CallbackQuery):
     session_maker = call.bot.data['session_maker']
     data = await select_price_subscription( session=session_maker )
-    text = 'Подписка позволяет писать и смотреть тех кто лайкнул тебя и лайкнуть в ответ, а так же писать сообщения ' \
+    text = 'Подписка позволяет писать и смотреть тех, кто лайкнул тебя и лайкнуть в ответ, а так же писать сообщения ' \
            'без взаимной симпатии\n'
     for dat in data:
         text += f'{dat["title"]}: {int(dat["price"])} рублей\n'
@@ -187,26 +188,42 @@ async def paid_subs_processor(call: types.CallbackQuery, callback_data:dict):
         else:
             pass
     logging.info(f'----------price-{price}, title - {title}')
-    await call.bot.send_invoice(chat_id=call.message.chat.id, title = 'Оформление подписки', description= title,need_email = True,
+    invoice_bot = await call.bot.send_invoice(chat_id=call.message.chat.id, title = 'Оформление подписки', description= title,need_email = True,
                                 payload=f'{number_of_day}', provider_token=yootoken,currency='RUB',
-                                start_parameter= 'subscription', prices=[{'label': 'руб', 'amount': int(price)*100}], send_email_to_provider=True)
+                                start_parameter= 'subscription', prices=[{'label': 'руб', 'amount': int(price)*100}], send_email_to_provider=True,
+                                              provider_data ={"receipt" : {
+                                                  "items": [
+                                                      {
+                                                          "description": f"Подписка {title}",
+                                                          "quantity": 1,
+                                                          "amount": {
+                                                              "value": int(price),
+                                                              "currency": "RUB"
+                                                          },
+                                                          "vat_code": 1,
+                                                      }
+                                                  ],
+                                              }})
+    logging.info(invoice_bot)
 
 async def procces_pre_paid_subs(pre_check_query: types.PreCheckoutQuery):
     user_id = pre_check_query.from_user.id
     logging.info(pre_check_query)
     session = pre_check_query.bot['session_maker']
     number_of_day = pre_check_query.invoice_payload
-    try:
-        await insert_paid_subscription(session=session, user_id=user_id, number_of_day=number_of_day)
-    except NumberOfDays:
-        await pre_check_query.bot.send_message(chat_id=user_id, text='Что то пошло не так обратитесь к администрации')
-        return
-    await pre_check_query.bot.answer_pre_checkout_query( pre_check_query.id, ok=True )
-
+    check_pre_check_out = await pre_check_query.bot.answer_pre_checkout_query( pre_check_query.id, ok=True )
+    logging.info(pre_check_query)
+    logging.info(check_pre_check_out)
+    if check_pre_check_out:
+        try:
+            await insert_paid_subscription(session=session, user_id=user_id, number_of_day=number_of_day)
+        except NumberOfDays:
+            await pre_check_query.bot.send_message(chat_id=user_id, text='Что-то пошло не так, обратитесь к администрации')
+            return
 
 async def pay_paid_subs(message:types.Message):
     logging.info(f'----------------------{message.successful_payment}')
-    await message.answer( 'Вы подписны на бота' )
+    await message.answer( 'Вы подписаны на бота' )
 
 #My profile callback
 async def my_profile_callback(call:types.CallbackQuery, callback_data:dict):
@@ -251,8 +268,8 @@ async def edit_about_me(callback:types.CallbackQuery):
     user_anket = await select_user( session=session_maker, user_id=user_id )
     about_me = user_anket[0]['about_my_self']
     logging.info(len(about_me))
-    text = f'Здесь ты можешь поменять пункт "обо мне". Если хотите поменять на основании предыдущего просто нажмите на текст находящийся в ' \
-           f'звездочке и оно копируется, далее вставьте и отредактируйте\n'\
+    text = f'Здесь ты можешь поменять пункт "обо мне". Если хочешь поменять на основании предыдущего, просто нажми на текст, находящийся в ' \
+           f'звездочке и оно скопируется, далее вставь и отредактируй\n'\
 
     if len(about_me) > 4000:
         about_my_self_new = await text_separator( text=about_me )
@@ -275,7 +292,7 @@ async def edit_about_me_state(message:types.Message, state:FSMContext):
                 await message.answer(text=f'*<code>{mess}</code>*')
         else:
             await message.answer( text=f'*<code>{about_my_self}</code>*' )
-        text = f'Сократите количество символов до 4000 сейчас {len( about_my_self )} '
+        text = f'Сократи количество символов до 4000, сейчас {len( about_my_self )} '
         await message.answer( text=text )
         return
     session_maker = message.bot.data['session_maker']
@@ -284,7 +301,7 @@ async def edit_about_me_state(message:types.Message, state:FSMContext):
     await update_user_info( session=session_maker, user_id=user_id, about_my_self=about_my_self )
     await state.finish()
     await changing_moderation( session=session_maker, user_id=user_id )
-    text = 'Вы изменили пункт "О себе"'
+    text = 'Ты изменил пункт "О себе"'
     kb = await edit_profile_kb()
     await edit_message( message=message, text=text, markup=kb )
 
@@ -296,7 +313,7 @@ async def edit_my_photo(call: Union[types.CallbackQuery, types.Message], user_id
     quantity_photos = len( more_photos )
     if quantity_photos < 1:
         kb = await edit_my_photos_kb(user_id=user_id, counter=counter,no_foto=True)
-        await edit_message(message=call, text=f'У вас нет фото нажмите "Добавить"', markup=kb)
+        await edit_message(message=call, text=f'У тебя нет фото, нажми "Добавить"', markup=kb)
         return
     if counter + 1 > quantity_photos:
         counter = 0
@@ -331,13 +348,13 @@ async def edit_my_first_photo(call: types.CallbackQuery, counter):
         await call.message.edit_reply_markup( reply_markup=kb )
         await call.answer('Главное фото изменено')
     except MessageNotModified:
-        await call.answer('Данное фото является главной')
+        await call.answer('Данное фото является главным')
         pass
 
 
 async def add_my_photo(message: Union[types.Message, types.CallbackQuery]):
     logging.info(['------------add_my_photo------------'])
-    text = 'Прикрепите фото которые хотите добавить'
+    text = 'Прикрепи фото, которые хочешь добавить'
     kb = await cancel_inline_kb()
     await edit_message(message=message, text=text, markup=kb)
     await EditOther.my_photo_state.set()
@@ -363,7 +380,7 @@ async def add_my_photo_state(message: types.Message, state:FSMContext ,album: Li
                 await insert_photo( session=session_maker, user_id=user_id, photo_id=file_id, unique_id=unique_id )
             await state.finish()
         else:
-            await message.answer('Что то пошло не так')
+            await message.answer('Что-то пошло не так')
             await state.finish()
         info_first_photo = await select_first_photo(session=session_maker, user_id=user_id)
         if len(info_first_photo) < 1:
@@ -424,7 +441,7 @@ async def edit_name_state(message: Union[types.Message, types.CallbackQuery], st
         message = message.message
     new_name = message.text
     await state.update_data(new_name=new_name)
-    text = f'Вы уверены что хотите поменять имя на {new_name} '
+    text = f'Вы уверены, что хотите поменять имя на {new_name} '
     kb = await yes_no_kb()
     await edit_message(message=message, text=text, markup=kb)
     logging.info('edit_name_state_cancel')
@@ -439,13 +456,13 @@ async def edit_name_confirm(message: Union[types.Message, types.CallbackQuery], 
         data = await state.get_data()
         new_name = data['new_name']
         await update_user_info(session=session, user_id= user_id, first_name = new_name )
-        text = f'Вы успешно изменили имя теперь вас зовут {new_name}'
+        text = f'Вы успешно изменили имя. Теперь вас зовут {new_name}'
         kb = await edit_profile_kb()
     elif callback == 'no':
         text = f'Вы отменили изменение имени'
         kb = await edit_profile_kb()
     else:
-        text = 'что-то пошло не так'
+        text = 'Что-то пошло не так'
         kb = await edit_profile_kb()
     await edit_message(message=message, text=text, markup=kb)
     await state.finish()
@@ -454,7 +471,7 @@ async def edit_name_confirm(message: Union[types.Message, types.CallbackQuery], 
 
 #edit_city
 async def edit_city(arg: Union[types.Message, types.CallbackQuery]):
-    text = 'Напиши новый город'
+    text = 'Напишите новый город'
     kb = await cancel_inline_kb()
     await edit_message(message=arg, text=text, markup=kb)
     await EditOther.city_state.set()
@@ -468,17 +485,17 @@ async def edit_city_state(message: Union[types.Message, types.CallbackQuery], st
     if check_rus_city:
         new_city = await check_city(new_city)
     else:
-        text = 'Напиши город на русском языке'
+        text = 'Напишите город на русском языке'
         kb = await cancel_inline_kb()
         await edit_message( message=message, text=text, markup=kb )
         return
     if new_city:
         await state.update_data(new_city=new_city[1])
-        text = f'Вы уверены что хотите поменять город на {new_city[1]} '
+        text = f'Вы уверены, что хотите поменять город на {new_city[1]}? '
         kb = await yes_no_kb()
         await edit_message( message=message, text=text, markup=kb )
     else:
-        text = 'Нет такого города в базе напиши еще раз'
+        text = 'Нет такого города в базе. Напишите еще раз'
         kb = await cancel_inline_kb()
         await edit_message( message=message, text=text, markup=kb )
         return
@@ -498,7 +515,7 @@ async def edit_city_confirm(message: Union[types.Message, types.CallbackQuery], 
         text = f'Вы отменили изменение'
         kb = await edit_profile_kb()
     else:
-        text = 'что-то пошло не так'
+        text = 'Что-то пошло не так'
         kb = await edit_profile_kb()
     await edit_message(message=message, text=text, markup=kb)
     await state.finish()
@@ -510,7 +527,7 @@ async def edit_practice(arg: Union[types.Message, types.CallbackQuery]):
         arg = arg.message
     session = arg.bot.data['session_maker']
     all_user_info = await select_user(session=session, user_id=arg.chat.id)
-    text = f'Напиши свои новые практики сейчас твои практики:\n' \
+    text = f'Напишите свои новые практики. Сейчас ваши практики:\n' \
            f'<code>{all_user_info[0]["practices"]}</code>'
     kb = await cancel_inline_kb()
     await edit_message(message=arg, text=text, markup=kb)
@@ -522,7 +539,7 @@ async def edit_practice_state(message: Union[types.Message, types.CallbackQuery]
         message = message.message
     new_practice = message.text
     await state.update_data(new_practice=new_practice)
-    text = f'Вы уверены что хотите поменять практики на {new_practice} '
+    text = f'Вы уверены, что хотите поменять практики на {new_practice}? '
     kb = await yes_no_kb()
     await edit_message(message=message, text=text, markup=kb)
 
@@ -542,7 +559,7 @@ async def edit_practice_confirm(message: Union[types.Message, types.CallbackQuer
         text = f'Вы отменили изменение'
         kb = await edit_profile_kb()
     else:
-        text = 'что-то пошло не так'
+        text = 'Что-то пошло не так'
         kb = await edit_profile_kb()
     await edit_message(message=message, text=text, markup=kb)
     await state.finish()
@@ -553,7 +570,7 @@ async def edit_tabu(arg: Union[types.Message, types.CallbackQuery]):
         arg = arg.message
     session = arg.bot.data['session_maker']
     all_user_info = await select_user(session=session, user_id=arg.chat.id)
-    text = f'Напиши свои новые табу сейчас твои табу:\n' \
+    text = f'Напишите свои новые табу. Сейчас ваши табу:\n' \
            f'<code>{all_user_info[0]["tabu"]}</code>'
     kb = await cancel_inline_kb()
     await edit_message(message=arg, text=text, markup=kb)
@@ -565,7 +582,7 @@ async def edit_tabu_state(message: Union[types.Message, types.CallbackQuery], st
         message = message.message
     new_tabu = message.text
     await state.update_data(new_tabu=new_tabu)
-    text = f'Вы уверены что хотите поменять свои табу на {new_tabu} '
+    text = f'Вы уверены, что хотите поменять свои табу на {new_tabu}? '
     kb = await yes_no_kb()
     await edit_message(message=message, text=text, markup=kb)
 
@@ -585,7 +602,7 @@ async def edit_tabu_confirm(message: Union[types.Message, types.CallbackQuery], 
         text = f'Вы отменили изменение'
         kb = await edit_profile_kb()
     else:
-        text = 'что-то пошло не так'
+        text = 'Что-то пошло не так'
         kb = await edit_profile_kb()
     await edit_message(message=message, text=text, markup=kb)
     await state.finish()
@@ -599,7 +616,7 @@ async def edit_birthday(arg: Union[types.Message, types.CallbackQuery]):
     all_user_info = await select_user(session=session, user_id=arg.chat.id)
     birthday = all_user_info[0]["birthday"]
     correct_date = birthday.strftime("%d-%m-%Y")
-    text = f'Напиши свой день рождения сейчас: {correct_date}'
+    text = f'Напишите свой день рождения. Сейчас ваш день рождения: {correct_date}'
     kb = await cancel_inline_kb()
     await edit_message(message=arg, text=text, markup=kb)
     await EditOther.birthday_state.set()
@@ -611,12 +628,19 @@ async def edit_birthday_state(message: Union[types.Message, types.CallbackQuery]
     new_birthday = message.text
     check_date = await date_formats(new_birthday)
     if check_date:
-        await state.update_data(new_birthday=new_birthday)
-        text = f'Вы уверены что хотите поменять день рождение на {new_birthday} '
-        kb = await yes_no_kb()
-        await edit_message( message=message, text=text, markup=kb )
+        age = await calculateAge(check_date)
+        if age >= 18:
+            await state.update_data(new_birthday=new_birthday)
+            text = f'Вы уверены, что хотите поменять день рождение на {new_birthday}? '
+            kb = await yes_no_kb()
+            await edit_message( message=message, text=text, markup=kb )
+        else:
+            text = 'Если вы младше 18 лет, покиньте данный сервис.'
+            kb = await cancel_inline_kb()
+            await edit_message( message=message, text=text, markup=kb )
+            return
     else:
-        text = 'Введен не правильный формат даты. Введи в формате 01-01-2000'
+        text = 'Введен неправильный формат даты. Введите в формате 01.01.2000'
         kb = await cancel_inline_kb()
         await edit_message( message=message, text=text, markup=kb )
         return
@@ -632,13 +656,13 @@ async def edit_birthday_confirm(message: Union[types.Message, types.CallbackQuer
         data = await state.get_data()
         new_birthday = data['new_birthday']
         await update_user_info(session=session, user_id= user_id, birthday = new_birthday )
-        text = f'Вы успешно изменили свой день рождение'
+        text = f'Вы успешно изменили свой день рождения'
         kb = await edit_profile_kb()
     elif callback == 'no':
         text = f'Вы отменили изменение'
         kb = await edit_profile_kb()
     else:
-        text = 'что-то пошло не так'
+        text = 'Что-то пошло не так'
         kb = await edit_profile_kb()
     await edit_message(message=message, text=text, markup=kb)
     await state.finish()
@@ -648,7 +672,7 @@ async def edit_birthday_confirm(message: Union[types.Message, types.CallbackQuer
 async def edit_another_city(arg: Union[types.Message, types.CallbackQuery], state:FSMContext=None):
     if isinstance(arg, types.CallbackQuery):
         arg = arg.message
-    text = f'Хочешь просматривать анкеты с другого города?'
+    text = f'Хотите просматривать анкеты из другого города?'
     kb = await yes_no_kb()
     await edit_message(message=arg, text=text, markup=kb)
     await EditOther.another_city_state.set()
@@ -662,14 +686,14 @@ async def edit_another_city_confirm(message: Union[types.Message, types.Callback
     session = message.bot.data['session_maker']
     if callback == 'yes':
         await update_user_info(session=session, user_id= user_id, partner_another_city = True )
-        text = f'Теперь ты будешь видеть анкеты с другого города'
+        text = f'Теперь вы будете видеть анкеты из другого города'
         kb = await edit_profile_kb()
     elif callback == 'no':
         await update_user_info(session=session, user_id= user_id, partner_another_city = False )
-        text = f'Теперь ты не будешь видеть анкеты с другого города'
+        text = f'Теперь вы не будете видеть анкеты из другого города'
         kb = await edit_profile_kb()
     else:
-        text = 'что-то пошло не так'
+        text = 'Что-то пошло не так'
         kb = await edit_profile_kb()
     await edit_message(message=message, text=text, markup=kb)
     await state.finish()
@@ -679,7 +703,7 @@ async def edit_another_city_confirm(message: Union[types.Message, types.Callback
 async def edit_interaction_format(arg: Union[types.Message, types.CallbackQuery], state: FSMContext = None):
     if isinstance( arg, types.CallbackQuery ):
         arg = arg.message
-    text = f'Какой формат ты предпочитаешь?'
+    text = f'Какой формат вы предпочитаете?'
     kb = await interaction_format_button()
     await edit_message( message=arg, text=text, markup=kb )
     await EditOther.interaction_format_state.set()
@@ -695,11 +719,11 @@ async def edit_interaction_format_confirm(message: Union[types.Message, types.Ca
     session = message.bot.data['session_maker']
     await update_user_info( session=session, user_id=user_id, interaction_format=callback )
     if callback == 'online':
-        text = f'Теперь будет показываться только онлайн анкеты'
+        text = f'Теперь будут показываться только онлайн анкеты'
     elif callback == 'offline':
-        text = f'Теперь будет показываться только офлайн анкеты '
+        text = f'Теперь будут показываться только офлайн анкеты '
     else:
-        text = f'Теперь будет показываться офлайн и онлайн анкеты  '
+        text = f'Теперь будут показываться офлайн и онлайн анкеты  '
     kb = await edit_profile_kb()
     await edit_message( message=message, text=text, markup=kb )
     await state.finish()
@@ -709,7 +733,7 @@ async def edit_interaction_format_confirm(message: Union[types.Message, types.Ca
 async def edit_min_age(arg: Union[types.Message, types.CallbackQuery], state:FSMContext=None):
     if isinstance( arg, types.CallbackQuery ):
         arg = arg.message
-    text = f'Пришли новый минимальный возраст'
+    text = f'Пришлите новый минимальный возраст'
     kb = await cancel_inline_kb()
     await edit_message( message=arg, text=text, markup=kb )
     await EditOther.min_age_state.set()
@@ -717,7 +741,7 @@ async def edit_min_age(arg: Union[types.Message, types.CallbackQuery], state:FSM
 async def edit_max_age(arg: Union[types.Message, types.CallbackQuery], state:FSMContext):
     if isinstance(arg, types.CallbackQuery):
         arg = arg.message
-    text = f'Пришли новый максимальный возраст'
+    text = f'Пришлите новый максимальный возраст'
     kb = await cancel_inline_kb()
     try:
         min_age = int(arg.text)
@@ -742,7 +766,7 @@ async def min_max_age_confirm(arg: Union[types.Message, types.CallbackQuery], st
         min_age = int(data['min_age'])
         if min_age > max_age:
             text = f'Вы ввели минимальный возраст {min_age}, а максимальный {max_age}, '
-            f'пожалуйста введите корректный максимальный возраст'
+            f'пожалуйста, введите корректный максимальный возраст'
             kb = await cancel_inline_kb()
             await edit_message(message=arg, text=text, markup=kb )
             return

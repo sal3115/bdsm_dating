@@ -1,9 +1,9 @@
 [Unit]
-Description=Course Bot
+Description=interesting dating bot
 After=network.target
 
 [Service]
-User=tgbot
+User=ubuntu
 Group=tgbot
 Type=simple
 WorkingDirectory=/opt/tgbot

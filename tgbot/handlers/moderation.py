@@ -19,9 +19,10 @@ from tgbot.misc.states import UserModeraion, RewardUser, EditLink, NewLink, Reco
     SearchUser, BlockUser, EditUserModeration
 from tgbot.models.sql_request import select_moderation_user_id, select_user, select_user_anketa_verefication, \
     select_first_photo, update_moderation, update_user_info, select_complaints, select_complaints_join, \
-    update_complaint_decision, select_column_data, select_user_anketa, select_all_users_mailing, insert_rejecting_verification, \
+    update_complaint_decision, select_column_data, select_user_anketa, select_all_users_mailing, \
+    insert_rejecting_verification, \
     select_rejection_user, delete_rejecting_verification, insert_block_user_description, select_block_user_description, \
-    delete_block_user_description
+    delete_block_user_description, select_user_moderation
 from tgbot.services.auxiliary_functions import edit_message, format_text_profile
 
 
@@ -277,13 +278,13 @@ async def verify_kb(call: types.CallbackQuery, callback_data:dict, counter=0, st
         if status == 'block_user':
             await call.answer(text='Данный пользователь и так заблокирован')
         else:
-            text = 'Напиши причину блокировки пользователя'
+            text = 'Напишите причину блокировки пользователя'
             kb = await cancel_inline_kb()
             await edit_message( message=call, text=text, markup=kb )
             await BlockUser.block_user_state.set()
             await state.update_data( user_id=user_id_profile, page=page, type_profile=type_profile )
     elif callback == 'confirm_garant':
-        text = 'Вы уверены что хотите подтвердить наличие гаранта у данного пользователя'
+        text = 'Вы уверены, что хотите подтвердить наличие гаранта у данного пользователя'
         kb = await appoint_guarantor_confirm_kb(user_id=user_id_profile)
         await edit_message(message=call, text=text, markup=kb)
     elif callback == 'profile':
@@ -345,7 +346,7 @@ async def edit_user_moderation_state(message:types.Message, state:FSMContext):
 async def block_user_state(message:types.Message, state:FSMContext):
     reason_for_blocking = message.text
     if len(reason_for_blocking) > 1001:
-        text = f'Уменьши сообщение до 1000 знаков сейчас знаков: {len(reason_for_blocking)}'
+        text = f'Уменьшите сообщение до 1000 знаков. Сейчас знаков: {len(reason_for_blocking)}'
         kb = cancel_inline_kb()
         await edit_message(message=message, text=text, markup=kb)
         await BlockUser.block_user_state.set()
@@ -755,12 +756,14 @@ async def scrolling_photo_search_cb(call: types.CallbackQuery, callback_data: di
 async def search_user_id_telegram_state(message:Union[types.Message, types.CallbackQuery], state:FSMContext=None, user_id=None):
     if isinstance(message, types.CallbackQuery):
         message = message.message
+    session = message.bot.data['session_maker']
     if user_id is None:
-        id_user = message.text
+        id_m = message.text
+        user_info_all = await select_user_moderation(session=session, id=id_m)
+        id_user = user_info_all[0]['user_id']
     else:
         id_user = user_id
-    session = message.bot.data['session_maker']
-    user_info_all = await select_user(session=session, user_id=id_user)
+        user_info_all = await select_user(session=session, user_id=id_user)
     logging.info(['------user_info_all-------', len(user_info_all), user_info_all])
     if len(user_info_all) < 1:
         text = 'Такого ИД нет, проверьте правильность набора ИД и повторите попытку'

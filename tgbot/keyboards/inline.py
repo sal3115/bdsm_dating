@@ -62,8 +62,7 @@ async def func_kb_phone(button_next=False, button_complete=False):
     return kb
 
 
-async def func_kb_position(message: Union[types.Message, types.CallbackQuery], your_position=None):
-    print(message)
+async def func_kb_position(your_position=None):
     kb = InlineKeyboardMarkup()
     if your_position is None or your_position == 'Свитч':
         position_theme = ['Доминирование', 'Подчинение', 'Свитч']
@@ -304,13 +303,13 @@ async def dating_keyboard(user_id=0, page=0, type_profiles=None, url=None, call_
     markup.add(InlineKeyboardButton(text='Жалоба',
                                        callback_data=callback_data_type.new(callback='complain',
                                                                             user_id=user_id, page=page)))
-
-    markup.add( InlineKeyboardButton( text='Назад',
-                                         callback_data=callback_data_type.new( callback='back_anket',
-                                                                               user_id=user_id, page=page ) ) )
-    markup.insert(InlineKeyboardButton(text='Следующая',
-                                       callback_data=callback_data_type.new(callback='following_anket',
-                                                                            user_id=user_id, page=page)))
+    if type_profiles is not None:
+        markup.add( InlineKeyboardButton( text='Назад',
+                                             callback_data=callback_data_type.new( callback='back_anket',
+                                                                                   user_id=user_id, page=page ) ) )
+        markup.insert(InlineKeyboardButton(text='Следующая',
+                                           callback_data=callback_data_type.new(callback='following_anket',
+                                                                                user_id=user_id, page=page)))
     return markup
 
 
@@ -822,3 +821,11 @@ async def interaction_format_button():
                                          callback_data=interaction_format_cb.new( callback='all' ) ) )
     return markup
 
+yes_no_cb_confirm_city = CallbackData('ynccc', 'callback')
+async def yes_no_kb_confirm_city():
+    markup = InlineKeyboardMarkup( row_width=2 )
+    markup.insert( InlineKeyboardButton( text='Да',
+                                         callback_data=yes_no_cb_confirm_city.new( callback='yes' ) ) )
+    markup.insert( InlineKeyboardButton( text='Нет',
+                                         callback_data=yes_no_cb_confirm_city.new( callback='no' ) ) )
+    return markup

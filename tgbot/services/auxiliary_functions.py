@@ -8,7 +8,7 @@ from typing import Union, List
 
 from aiogram import types
 from aiogram.bot import bot
-from aiogram.types import InputMedia, InputMediaVideo, InputFile
+from aiogram.types import InputMedia, InputMediaVideo, InputFile, InputMediaPhoto
 from aiogram.utils.exceptions import MessageCantBeEdited, BadRequest, MessageToEditNotFound, MessageToDeleteNotFound, \
     MessageNotModified, InlineKeyboardExpected
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -130,7 +130,7 @@ async def text_separator(text, photo = False):
                     return_text.append(mess)
                 return return_text
     elif len(text) < 4000:
-        return text
+        return [text]
     elif len( text ) >= 4000:
         new_text = textwrap.wrap( text, width=4000, break_long_words=True, replace_whitespace=False )
         return new_text
@@ -446,10 +446,10 @@ async def edit_message_2(message: Union[types.Message, types.CallbackQuery], tex
 #         if markup.inline_keyboard:
 #             message.bot['last_message'] = message_callback
 
-async def send_message_callback(callback:types.CallbackQuery, text, last_message, photo=None, markup=None, type=None):
+async def send_message_callback(callback:types.CallbackQuery, text, last_message, photo=None, markup=None, type_viewer=None):
     last_message: types.Message
     new_last_message = None
-    if photo or type =='profile_viewer': # Photo
+    if photo or type_viewer =='profile_viewer': # Photo
         photo = photo if photo else 'tgbot/misc/no_photo.jpg'
         if last_message is not None: # есть last_message
             if 'photo' in last_message :  # в last_message есть фото
@@ -464,9 +464,12 @@ async def send_message_callback(callback:types.CallbackQuery, text, last_message
     else: # no photo
         if last_message is not None: # есть last_message
             if 'photo' in last_message : # в last_message есть фото
-                await callback.bot.delete_message( chat_id=callback.message.chat.id,
-                                                   message_id=last_message.message_id )
-                new_last_message = await callback.message.answer(text=text, reply_markup=markup)
+                try:
+                    await callback.bot.delete_message( chat_id=callback.message.chat.id,
+                                                       message_id=last_message.message_id )
+                    new_last_message = await callback.message.answer(text=text, reply_markup=markup)
+                except( MessageToEditNotFound, MessageToDeleteNotFound):
+                    await callback.message.answer(text=text, reply_markup=markup)
             else: # в last_message нет фото
                 if last_message.message_id + 2 > callback.message.message_id:
                     await callback.message.delete()
@@ -476,116 +479,183 @@ async def send_message_callback(callback:types.CallbackQuery, text, last_message
                     new_last_message = await callback.bot.edit_message_text( text=text, chat_id=callback.message.chat.id,
                                                                             message_id=last_message.message_id,
                                                                             reply_markup=markup )
-
-                new_last_message = await callback.bot.edit_message_text( text=text,chat_id=callback.message.chat.id, message_id=last_message.message_id, reply_markup=markup )
         else:# no last_message
             new_last_message = await callback.message.answer( text=text, reply_markup=markup )
     return new_last_message
-# async def send_message_callback(callback:types.CallbackQuery, text, last_message, photo=None, markup=None, type=None):
-#     last_message: types.Message
-#     new_last_message = None
-#     if photo: # Photo
-#         if last_message is not None: # есть last_message
-#             if 'photo' in last_message :  # в last_message есть фото
-#                 media = InputMedia(media=photo)
-#                 await callback.bot.edit_message_media(media=media, chat_id=callback.message.chat.id, message_id=last_message.message_id)
-#                 new_last_message = await callback.bot.edit_message_caption(caption=text, chat_id=callback.message.chat.id, message_id=last_message.message_id, reply_markup=markup)
-#             else:  # в last_message нет фото
-#                 await callback.bot.delete_message(chat_id=callback.message.chat.id, message_id=last_message.message_id)
-#                 new_last_message = await callback.message.answer_photo(photo=photo, caption=text, reply_markup=markup)
-#         else: # нет last_message
-#             new_last_message = await callback.message.answer_photo( photo=photo, caption=text, reply_markup=markup )
-#     else: # no photo
-#         if last_message is not None: # есть last_message
-#             if 'photo' in last_message : # в last_message есть фото
-#                 await callback.bot.delete_message( chat_id=callback.message.chat.id,
-#                                                    message_id=last_message.message_id )
-#                 new_last_message = await callback.message.answer(text=text, reply_markup=markup)
-#             else: # в last_message нет фото
-#                 if last_message.message_id + 2 > callback.message.message_id:
-#                     await callback.message.delete()
-#                     new_last_message = await callback.message.answer( text=text, reply_markup=markup )
-#                 else:
-#                     await callback.message.delete()
-#                     new_last_message = await callback.bot.edit_message_text( text=text, chat_id=callback.message.chat.id,
-#                                                                             message_id=last_message.message_id,
-#                                                                             reply_markup=markup )
-#
-#                 new_last_message = await callback.bot.edit_message_text( text=text,chat_id=callback.message.chat.id, message_id=last_message.message_id, reply_markup=markup )
-#         else:# no last_message
-#             new_last_message = await callback.message.answer( text=text, reply_markup=markup )
-#     return new_last_message
 
-async def send_message_message(message:types.Message, text, last_message, photo=None, markup=None, type=None):
+
+async def send_message_message(message:types.Message, text, last_message, photo=None, markup=None, type_viewer=None):
     last_message: types.Message
     new_last_message = None
-    if photo or type == 'profile_viewer':  # Photo
-        photo = photo if photo else InputFile('tgbot/misc/no_photo.jpg')
+    if photo or type_viewer == 'profile_viewer':  # Photo
+        answer_photo = photo if photo else InputFile('tgbot/misc/no_photo.jpg')
         if last_message is not None: # есть last_message
             if 'photo' in last_message :  # в last_message есть фото
-                media = InputMedia(media=photo)
-                await message.bot.edit_message_media(media=media, chat_id=message.chat.id, message_id=last_message.message_id)
-                new_last_message = await message.bot.edit_message_caption(caption=text, chat_id=message.chat.id, message_id=last_message.message_id, reply_markup=markup)
+                try:
+                    media = InputMedia(media=photo) if photo else InputMediaPhoto( media=InputFile('tgbot/misc/no_photo.jpg'))
+                    logging.info(f'media {media} - type {type(media)}')
+                    logging.info(f'photo {photo} - type {type(photo)}')
+                    await message.bot.edit_message_media(media=media, chat_id=message.chat.id, message_id=last_message.message_id)
+                    new_last_message = await message.bot.edit_message_caption(caption=text, chat_id=message.chat.id, message_id=last_message.message_id, reply_markup=markup)
+                    if last_message.message_id != message.message_id:
+                        await message.bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+                except (MessageToEditNotFound, MessageToDeleteNotFound):
+                    new_last_message = await message.answer_photo( photo=answer_photo, caption=text, reply_markup=markup )
             else:  # в last_message нет фото
-                await message.bot.delete_message(chat_id=message.chat.id, message_id=last_message.message_id)
-                new_last_message = await message.answer_photo(photo=photo, caption=text, reply_markup=markup)
+                try:
+                    await message.bot.delete_message(chat_id=message.chat.id, message_id=last_message.message_id)
+                    new_last_message = await message.answer_photo(photo=answer_photo, caption=text, reply_markup=markup)
+                except ( MessageToEditNotFound, MessageToDeleteNotFound):
+                    new_last_message = await message.answer_photo( photo=answer_photo, caption=text, reply_markup=markup )
         else: # нет last_message
-            new_last_message = await message.answer_photo( photo=photo, caption=text, reply_markup=markup )
+            new_last_message = await message.answer_photo( photo=answer_photo, caption=text, reply_markup=markup )
     else: # no photo
         if last_message is not None: # есть last_message
             logging.info(last_message)
             if 'photo' in last_message : # в last_message есть фото
-                await message.bot.delete_message( chat_id=message.chat.id,
+                try:
+
+                    await message.bot.delete_message( chat_id=message.chat.id,
                                                    message_id=last_message.message_id )
-                new_last_message = await message.answer(text=text, reply_markup=markup)
+                    new_last_message = await message.answer(text=text, reply_markup=markup)
+                except(MessageToEditNotFound, MessageToDeleteNotFound):
+                    new_last_message = await message.answer( text=text, reply_markup=markup )
             else: # в last_message нет фото
                 try:
                     if 'reply_markup' in last_message and 'reply_markup' in message:
-                        logging.info(f'last_message {last_message}')
-                        logging.info(f'message {message}')
                         new_last_message = await message.bot.edit_message_text( text=text,chat_id=message.chat.id, message_id=last_message.message_id, reply_markup=markup )
                     else:
-                        logging.info( f'1 last_message {last_message}' )
-                        logging.info( f'1 message {message}' )
                         if 'reply_markup' in last_message:
                             await message.bot.delete_message(chat_id=message.chat.id, message_id=last_message.message_id)
                         new_last_message = await message.answer( text=text, reply_markup=markup )
                         await message.delete()
-
-                except MessageToEditNotFound:
-                    logging.info( f'2 last_message {last_message}' )
-                    logging.info( f'2 message {message}' )
+                except( MessageToEditNotFound, MessageToDeleteNotFound):
                     new_last_message = await message.answer( text=text, reply_markup=markup )
         else:# no last_message
             new_last_message = await message.answer( text=text, reply_markup=markup )
     return new_last_message
 
+
+# async def profile_viewer(message:Union[types.Message, types.CallbackQuery], text, photo=None, markup=None):
+#     #     new_text =
+#     try:
+#         last_message = message.bot['last_message']
+#     except KeyError:
+#         last_message = None
+#     if isinstance(message, types.CallbackQuery):
+#         message_callback = await send_message_callback(callback=message,text=text ,last_message=last_message, photo=photo, markup=markup, type='profile_viewer')
+#     else: #types.Message
+#         message_callback = await send_message_message(message=message, text=text, last_message=last_message, photo=photo, markup=markup, type='profile_viewer')
+#     if markup:
+#         if markup.inline_keyboard:
+#             message.bot['last_message'] = message_callback
+
 async def profile_viewer(message:Union[types.Message, types.CallbackQuery], text, photo=None, markup=None):
+    new_text = await text_separator(text=text, photo=photo)
+    logging.info(len(new_text))
+    message_callback = None
     try:
         last_message = message.bot['last_message']
     except KeyError:
         last_message = None
     if isinstance(message, types.CallbackQuery):
-        message_callback = await send_message_callback(callback=message,text=text ,last_message=last_message, photo=photo, markup=markup, type='profile_viewer')
+        if len(new_text) <=1:
+            message_callback = await send_message_callback(callback=message,text=text ,last_message=last_message, photo=photo, markup=markup, type_viewer='profile_viewer')
+        else:
+            counter = 1
+            for n_t in new_text:
+                if counter == 1:
+                    message_callback = await send_message_callback( callback=message, text=n_t, last_message=last_message,
+                                                                photo=photo, type_viewer='profile_viewer' )
+                    counter+=1
+                elif counter == len(new_text):
+                    message_callback = await send_message_callback( callback=message, text=n_t,
+                                                                    last_message=last_message,
+                                                                    markup=markup, type_viewer='profile_viewer' )
+                    return
+                else:
+                    message_callback = await send_message_callback( callback=message, text=n_t,
+                                                                    last_message=last_message, type_viewer='profile_viewer' )
+                    counter+=1
     else: #types.Message
-        message_callback = await send_message_message(message=message, text=text, last_message=last_message, photo=photo, markup=markup, type='profile_viewer')
+        if len(new_text) <=1:
+            message_callback = await send_message_message(message=message, text=text, last_message=last_message, photo=photo, markup=markup, type_viewer='profile_viewer')
+        else:
+            counter = 1
+            for n_t in new_text:
+                if counter == 1:
+                    message_callback = await send_message_message( message=message, text=n_t, last_message=last_message,
+                                                               photo=photo, type_viewer='profile_viewer' )
+                elif counter == len(new_text):
+                    message_callback = await send_message_message( message=message, text=n_t, last_message=last_message,
+                                                                   markup=markup, type_viewer='profile_viewer' )
+                    return
+                else:
+                    message_callback = await send_message_message( message=message, text=n_t, last_message=last_message,
+                                                                   type_viewer='profile_viewer' )
     if markup:
         if markup.inline_keyboard:
             message.bot['last_message'] = message_callback
 
 
-
+# async def edit_message(message: Union[types.Message, types.CallbackQuery], text=None, markup=None, photo=None, video=None):
+#     new_text =
+#     try:
+#         last_message = message.bot['last_message']
+#     except KeyError:
+#         last_message = None
+#     if isinstance(message, types.CallbackQuery):
+#         message_callback = await send_message_callback(callback=message,text=text ,last_message=last_message, photo=photo, markup=markup)
+#     else: #types.Message
+#         message_callback = await send_message_message(message=message, text=text, last_message=last_message, photo=photo, markup=markup)
+#     if markup:
+#         logging.info(markup)
+#         if markup.inline_keyboard:
+#             message.bot['last_message'] = message_callback
 async def edit_message(message: Union[types.Message, types.CallbackQuery], text=None, markup=None, photo=None, video=None):
+    new_text = await text_separator(text=text, photo=photo)
+    logging.info(len(new_text))
     try:
         last_message = message.bot['last_message']
     except KeyError:
         last_message = None
     if isinstance(message, types.CallbackQuery):
-        message_callback = await send_message_callback(callback=message,text=text ,last_message=last_message, photo=photo, markup=markup)
+        if len(new_text) <= 1:
+            message_callback = await send_message_callback(callback=message,text=text ,last_message=last_message, photo=photo, markup=markup)
+        else:
+            counter = 1
+            for n_t in new_text:
+                if counter == 1:
+                    message_callback = await send_message_callback( callback=message, text=n_t,
+                                                                    last_message=last_message,
+                                                                    photo=photo)
+                    counter += 1
+                elif counter == len( new_text ):
+                    message_callback = await send_message_callback( callback=message, text=n_t,
+                                                                    last_message=last_message,
+                                                                    markup=markup)
+                    return
+                else:
+                    message_callback = await send_message_callback( callback=message, text=n_t,
+                                                                    last_message=last_message)
+                    counter += 1
     else: #types.Message
-        message_callback = await send_message_message(message=message, text=text, last_message=last_message, photo=photo, markup=markup)
+        if len(new_text) <=1:
+            message_callback = await send_message_message(message=message, text=text, last_message=last_message, photo=photo, markup=markup)
+        else:
+            counter = 1
+            for n_t in new_text:
+                if counter == 1:
+                    message_callback = await send_message_message( message=message, text=n_t, last_message=last_message,
+                                                                   photo=photo)
+                elif counter == len( new_text ):
+                    message_callback = await send_message_message( message=message, text=n_t, last_message=last_message,
+                                                                   markup=markup)
+                    return
+                else:
+                    message_callback = await send_message_message( message=message, text=n_t, last_message=last_message)
     if markup:
-        if markup.inline_keyboard:
+        if 'inline_keyboard' in markup:
             message.bot['last_message'] = message_callback
 async def add_user_func(data):
     params = dict(
@@ -617,11 +687,11 @@ async def add_user_func(data):
 async def format_text_profile(anket, session, type_profile=None, reward=None, return_reward=False):
     interaction_format_russia = {'offline': 'Оффлайн', 'online': 'Онлайн','all': 'Любой'}
     tru_false_russia = {'True': 'Да', 'False': 'Нет'}
-
+    gender_russia = {'men': 'муж.', 'women': 'жен.', 'pair':'пара'}
     user_id_anket = anket['user_id']
     id_anket = anket['id']
     name = anket['first_name']
-    age = calculateAge( anket['birthday'] )
+    age = await calculateAge( anket['birthday'] )
     city = anket['city']
     last_time = anket['last_time']
     tabu = anket['tabu']
@@ -629,8 +699,6 @@ async def format_text_profile(anket, session, type_profile=None, reward=None, re
     interaction_format = anket['interaction_format']
     gender = anket['gender']
     gender_partner = anket['gender_partner']
-
-    user_info = await select_user(session=session, user_id=user_id_anket)
     text=''
     if type_profile =='favorites_profile':
         text = f'ПОНРАВИЛИСЬ ВАМ\n\n'
@@ -641,7 +709,7 @@ async def format_text_profile(anket, session, type_profile=None, reward=None, re
     elif type_profile == 'not_interested_me':
         text = f'НЕ ПОНРАВИЛИСЬ ВАМ\n\n'
     text += f'Имя: {name}. Возраст: {age}\n'
-    text += f'Пол: {gender}. Ищю пол: {gender_partner}\n'
+    text += f'Пол: {gender_russia[f"{gender}"]}. Ищю пол: {gender_russia[f"{gender_partner}"]}\n'
     text += f'Город: {city}\n'
     correct_date = last_time.strftime("%d-%m-%Y")
     text += f'Последнее посещение: {correct_date}\n'
@@ -654,8 +722,9 @@ async def format_text_profile(anket, session, type_profile=None, reward=None, re
         min_age = anket['min_age']
         max_age = anket['max_age']
         moderation = anket['moderation']
-        text+= f'\nПартнер с другого города: {tru_false_russia[str(partner_another_city)]}'
-        text+= f'\nМинимальный возраст: {min_age}, максимальный возраст {max_age}'
+        text+= f'\nПартнер из другого города: {tru_false_russia[str(partner_another_city)]}'
+        text+= f'\nМинимальный возраст: {min_age}'
+        text +=f'\nМаксимальный возраст {max_age}'
         text+= f'\nМодерация: {tru_false_russia[str(moderation)]}'
 
     return text, user_id_anket
@@ -728,5 +797,5 @@ if __name__ == '__main__':
 
 async def shedule_jobs():
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(clear_table, 'cron', day_of_week='mon-sun', hour=21, minute=26,)
+    scheduler.add_job(clear_table, 'cron', day_of_week='mon-sun', hour=00, minute=00,)
     scheduler.start()

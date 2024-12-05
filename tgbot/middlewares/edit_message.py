@@ -29,6 +29,7 @@ class ReplaceOrDeleteInlineKeyboard(BaseMiddleware):
             return
         try:
             last_message_id = int(message.bot["last_message_id"])
+            logging.info(last_message_id)
             # if 'pre_checkout_query' in message:
             #     await message.bot.delete_message( chat_id=message.pre_checkout_query.from_user.id, message_id=last_message_id )
             # else:
@@ -40,6 +41,7 @@ class ReplaceOrDeleteInlineKeyboard(BaseMiddleware):
             pass
         except exceptions.MessageNotModified:
             pass
+
 # class ReplaceOrDeleteLastMessage(BaseMiddleware):
 #     async def on_pre_process_update(self, update: Union[types.Update, types.CallbackQuery], data: dict):
 #         if 'pre_checkout_query' in update:

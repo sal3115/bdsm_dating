@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ContentType, InputFile
@@ -14,8 +16,9 @@ from tgbot.services.photo_and_text import  text_dict
 # начало общения
 async def get_start(message: types.Message, state: FSMContext):
     kb = await func_kb_look_pravila()
+    logging.info('get_start')
     text = 'Добро пожаловать в бот знакомств по интересам.\n' \
-           'Прежде чем мы продолжим посмотри правила нашего бота.'
+           'Прежде чем мы продолжим, посмотрите правила нашего бота.'
     await message.answer(text=text, reply_markup=kb)
 
 # показываем правила сообщества

@@ -16,14 +16,14 @@ from tgbot.services.auxiliary_functions import edit_message, check_like_dislike,
 
 
 async def favourites_profile_no_paid(message: types.Message):
-    text = 'Для просмотра данного раздела оформите подписку\nИзменить анкету ➡️ Оформить подписку'
+    text = 'Для просмотра данного раздела, оформите подписку.\nИзменить анкету ➡️ Оформить подписку'
     await edit_message(message=message, text=text)
 
 async def favourites_profile(message:types.Message, last_message_id=None):
     text = '''На данной странице вы можете посмотреть:
-Пользователей которые понравились вам - "Понравились мне"
-Пользователей которым понравились вы - "Интересуются мной"
-Пользователей которые понравились вам и понравились вы - "Взаимный интерес"    
+Пользователей, которые понравились вам - "Понравились мне"
+Пользователей, которым понравились вы - "Интересуются мной"
+Пользователей, которые понравились вам и понравились вы - "Взаимный интерес"    
     '''
     logging.info(last_message_id)
     user_id = message.chat.id
@@ -68,7 +68,7 @@ async def favorites_profile_cb_not_paid(call: types.CallbackQuery, callback_data
     if callback == 'mutual_interest':
         await view_questionnaires(message=call, type_profile='mutual_interest')
     else:
-        text = 'Для просмотра данного раздела оформите подписку\nИзменить анкету ➡️ Оформить подписку'
+        text = 'Для просмотра данного раздела оформите подписку.\nИзменить анкету ➡️ Оформить подписку'
         kb = await favorite_profile_kb( user_id=user_id_anket, page=0 )
         await edit_message(message=call, text=text, markup=kb)
 

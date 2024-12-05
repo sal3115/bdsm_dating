@@ -19,12 +19,11 @@ async def first_page_other(message:types.Message):
         kb = await main_menu_kb(status_user='delete_user')
         await edit_message(message=message, text=text, markup=kb)
     elif status_user =='exit_user':
-        text = 'Вы вышли из аккаунта вам доступны только полезные материалы и вы так же всегда можете восстановить аккаунт'
+        text = 'Вы вышли из аккаунта.'
         kb = await main_menu_kb( status_user='exit_user' )
         await edit_message( message=message, text=text, markup=kb )
     elif status_user =='block':
-        text = f'Вы заблокированы администрацией если это произошло по ошибке обратитесь к администрации сервиса ' \
-               f'support@pyataykins.com или телеграм чат https://t.me/soulmateshelp обязательно укажите айди анкеты {user_id}'
+        text = f'Вы заблокированы администрацией. Если это произошло по ошибке, обратитесь к администрации сервиса '
         await edit_message( message=message, text=text)
     else:
         return

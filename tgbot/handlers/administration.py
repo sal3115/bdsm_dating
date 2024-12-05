@@ -56,7 +56,7 @@ async def admin_menu(message:Union[types.Message, types.CallbackQuery]):
 
 #Назначить модератора
 async def appoint_moderator(message:types.Message):
-    text = 'Отправьте ИД пользователя которого хотите назначить модератором'
+    text = 'Отправьте ИД пользователя, которого хотите назначить модератором'
     kb = await cancel_inline_kb()
     await edit_message(message=message, text=text, markup=kb)
     await AppointRemoveModerator.appoint_id_state.set()
@@ -109,7 +109,7 @@ async def appoint_moderator_complete(call:types.CallbackQuery, callback_data:dic
 
 #Убрать модератора
 async def remove_moderator(message:types.Message):
-    text = 'Отправьте ИД пользователя которого хотите убрать из модераторов'
+    text = 'Отправьте ИД пользователя, которого хотите убрать из модераторов'
     kb = await cancel_inline_kb()
     await edit_message(message=message, text=text, markup=kb)
     await AppointRemoveModerator.remove_id_state.set()
@@ -120,7 +120,7 @@ async def remove_moderator_confirm(message:types.Message, state:FSMContext=None)
     try:
         user_id_appoint = int(message.text)
     except ValueError:
-        text = 'Отправьте ИД пользователя которого хотите убрать из модераторов'
+        text = 'Отправьте ИД пользователя, которого хотите убрать из модераторов'
         kb = await cancel_inline_kb()
         await edit_message( message=message, text=text, markup=kb )
         return

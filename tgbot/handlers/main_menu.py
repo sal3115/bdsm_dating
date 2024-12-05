@@ -149,7 +149,7 @@ async def processing_dating_keyboard(call:types.CallbackQuery, callback_data:dic
     elif callback == 'interesting':
         check_moderation = await select_user(session=session_maker, user_id=user_id)
         if check_moderation[0]['moderation'] == False:
-            await call.answer('Вы не прошли модерацию, пожалуйста ждите.')
+            await call.answer('Вы не прошли модерацию, пожалуйста, ждите.')
             return
         else:
             check_mutual_like = await select_check_mutual_interest(session=session_maker, user_id=user_id, partner_id=user_id_anket)
@@ -163,7 +163,7 @@ async def processing_dating_keyboard(call:types.CallbackQuery, callback_data:dic
                 await view_questionnaires( message=call, page=page )
                 try:
                     text = 'У вас взаимный интерес. ' \
-                           'Зайдите в раздел «Лайки», «Взаимный интерес» чтобы начать общение.'
+                           'Зайдите в раздел «Лайки», «Взаимный интерес», чтобы начать общение.'
                     await call.bot.send_message( chat_id=user_id_anket, text=text )
                 except:
                     pass
@@ -172,15 +172,15 @@ async def processing_dating_keyboard(call:types.CallbackQuery, callback_data:dic
                 await insert_daily_reaktion(session=session_maker, user_id=user_id, partner_id=user_id_anket, reaction=True)
                 await view_questionnaires( message=call, page=page )
                 try:
-                    text = 'Кому то понравилась ваша анкета. Зайдите в раздел ' \
-                           '«Лайки», «Интересуются мной» чтобы узнать кто это. '
+                    text = 'Кому-то понравилась ваша анкета. Зайдите в раздел ' \
+                           '«Лайки», «Интересуются мной», чтобы узнать, кто это. '
                     await call.bot.send_message( chat_id=user_id_anket, text=text )
                 except:
                     pass
     elif callback == 'dont_show':
         check_moderation = await select_user( session=session_maker, user_id=user_id )
         if check_moderation[0]['moderation'] == False:
-            await call.answer( 'Вы не прошли модерацию, пожалуйста ждите.' )
+            await call.answer( 'Вы не прошли модерацию, пожалуйста, ждите.' )
             return
         else:
             await insert_like_dislake_all(session=session_maker, user_id=user_id, partner_user_id=user_id_anket, reaction=False)
@@ -234,11 +234,11 @@ async def support_func(message:types.Message):
     await edit_message(message=message, text=text)
 
 async def no_moderation_user_answer(message:types.Message):
-    text = 'Вы не прошли модерацию, пожалуйста подождите'
+    text = 'Вы не прошли модерацию, пожалуйста, подождите'
     await edit_message(message=message, text=text)
 
 async def block_user(message: types.Message):
-    text = 'Вы заблокированы для утонения обратитесь в поддержку'
+    text = 'Вы заблокированы. Для уточнения обратитесь в поддержку'
     kb = await main_menu_kb(status_user='block_user')
     await edit_message(message=message, text=text, markup = kb )
 

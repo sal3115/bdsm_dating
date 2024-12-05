@@ -419,7 +419,13 @@ async def select_user(session, user_id):
             answer = ses.execute( request )
             answer2 = [dict( r._mapping ) for r in answer.fetchall()]
             return answer2
-
+async def select_user_moderation(session, id):
+    request = select(*[col for col in Users.__table__.c]).where( Users.id == id )
+    with session() as ses:
+        with ses.begin():
+            answer = ses.execute( request )
+            answer2 = [dict( r._mapping ) for r in answer.fetchall()]
+            return answer2
 
 async def select_user_name(session, user_id):
     request = select(Users.username).where( Users.user_id == user_id )

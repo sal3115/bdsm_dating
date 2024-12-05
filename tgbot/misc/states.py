@@ -7,6 +7,7 @@ class FSM_hello(StatesGroup):
     your_gender = State()
     your_date_of_birth = State()
     your_city = State()
+    your_city_confirm = State()
     your_position = State()
     partner_position = State()
     your_practice = State()
