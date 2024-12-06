@@ -14,6 +14,7 @@ from aiogram.utils.exceptions import MessageCantBeEdited, BadRequest, MessageToE
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from geopy import Nominatim
 from geopy.adapters import AioHTTPAdapter
+from yoomoney import Quickpay
 
 from tgbot.config import load_config
 from tgbot.models.engine import create_engine_db, get_session_maker
@@ -782,6 +783,21 @@ async def insert_like_dislake_all(session, user_id, partner_user_id, reaction):
                                      partner_id=partner_user_id, reaction=reaction )
     else:
         return
+
+async def creating_bill(data, user_id):
+    all_info = []
+    for dat in data:
+        quickpay = Quickpay(
+            receiver="410012030256059",
+            quickpay_form="shop",
+            targets="subscription_bot",
+            paymentType="SB",
+            sum=int(dat["price"]),
+            label=f'{user_id}-{dat["title"]}-{int(dat["price"])}'
+        )
+        url_paid = quickpay.redirected_url
+        all_info.append({'title': dat["title"], 'price': int(dat["price"]), 'url_paid': url_paid})
+    return all_info
 
 async def clear_table():
     config = load_config(".env")

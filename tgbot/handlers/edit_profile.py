@@ -1,10 +1,12 @@
 import logging
+import random
 from typing import Union, List
 
 from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ContentType
 from aiogram.utils.exceptions import MessageNotModified
+from faker import Faker
 
 from tgbot.handlers.main_menu import scrolling_photo_func
 from tgbot.keyboards.inline import my_profile_new_cd, edit_profile_cd, edit_profile_kb, my_photos_cd, cancel_cd, \
@@ -162,8 +164,7 @@ async def scroll_photo_main_profile(call:types.CallbackQuery, callback_data:dict
 async def paid_subscription(call: types.CallbackQuery):
     session_maker = call.bot.data['session_maker']
     data = await select_price_subscription( session=session_maker )
-    text = 'Подписка позволяет писать и смотреть тех, кто лайкнул тебя и лайкнуть в ответ, а так же писать сообщения ' \
-           'без взаимной симпатии\n'
+    text = 'Подписка позволяет смотреть тех, кто лайкнул тебя, писать сообщения и лайкнуть в ответ\n'
     for dat in data:
         text += f'{dat["title"]}: {int(dat["price"])} рублей\n'
     user_id = call.message.chat.id
@@ -180,6 +181,7 @@ async def paid_subs_processor(call: types.CallbackQuery, callback_data:dict):
     title = ''
     number_of_day = ''
     yootoken = call.bot['config'].yootoken.yootoken
+
     for p in price_all_info:
         if int(p['id']) == int(price_id):
             title = p['title']
@@ -187,11 +189,19 @@ async def paid_subs_processor(call: types.CallbackQuery, callback_data:dict):
             number_of_day = p['number_of_days']
         else:
             pass
+    faker = Faker()
+    email_domain = ['@ya.ru', '@yandex.ru', '@gmail.com', '@rambler.ru', '@yahoo.com']
+    choice_email = random.choice( email_domain )
+    faker_email = faker.safe_email().split( '@' )
+    new_email = faker_email[0] + choice_email
     logging.info(f'----------price-{price}, title - {title}')
-    invoice_bot = await call.bot.send_invoice(chat_id=call.message.chat.id, title = 'Оформление подписки', description= title,need_email = True,
+    invoice_bot = await call.bot.send_invoice(chat_id=call.message.chat.id, title = 'Оформление подписки', description= title,
                                 payload=f'{number_of_day}', provider_token=yootoken,currency='RUB',
-                                start_parameter= 'subscription', prices=[{'label': 'руб', 'amount': int(price)*100}], send_email_to_provider=True,
+                                start_parameter= 'subscription', prices=[{'label': 'руб', 'amount': int(price)*100}],
                                               provider_data ={"receipt" : {
+                                                  "customer": {
+                                                      "email": new_email
+                                                  },
                                                   "items": [
                                                       {
                                                           "description": f"Подписка {title}",
