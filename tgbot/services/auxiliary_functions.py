@@ -451,15 +451,24 @@ async def send_message_callback(callback:types.CallbackQuery, text, last_message
     last_message: types.Message
     new_last_message = None
     if photo or type_viewer =='profile_viewer': # Photo
-        photo = photo if photo else 'tgbot/misc/no_photo.jpg'
+        answer_photo = photo if photo else InputFile('tgbot/misc/no_photo.jpg')
         if last_message is not None: # есть last_message
             if 'photo' in last_message :  # в last_message есть фото
-                media = InputMedia(media=photo)
-                await callback.bot.edit_message_media(media=media, chat_id=callback.message.chat.id, message_id=last_message.message_id)
-                new_last_message = await callback.bot.edit_message_caption(caption=text, chat_id=callback.message.chat.id, message_id=last_message.message_id, reply_markup=markup)
-            else:  # в last_message нет фото
-                await callback.bot.delete_message(chat_id=callback.message.chat.id, message_id=last_message.message_id)
-                new_last_message = await callback.message.answer_photo(photo=photo, caption=text, reply_markup=markup)
+                try:
+                    media = InputMedia( media=photo ) if photo else InputMediaPhoto(
+                        media=InputFile( 'tgbot/misc/no_photo.jpg' ) )
+                    logging.info( f'media {media} - type {type( media )}' )
+                    logging.info( f'photo {photo} - type {type( photo )}' )
+                    await callback.bot.edit_message_media( media=media, chat_id=callback.message.chat.id,
+                                                          message_id=last_message.message_id )
+                    new_last_message = await callback.bot.edit_message_caption( caption=text, chat_id=callback.message.chat.id,
+                                                                               message_id=last_message.message_id,
+                                                                               reply_markup=markup )
+                    if last_message.message_id != callback.message.message_id:
+                        await callback.bot.delete_message( chat_id=callback.message.chat.id, message_id=callback.message.message_id )
+                except (MessageToEditNotFound, MessageToDeleteNotFound):
+                    new_last_message = await callback.message.answer_photo( photo=answer_photo, caption=text,
+                                                                   reply_markup=markup )
         else: # нет last_message
             new_last_message = await callback.message.answer_photo( photo=photo, caption=text, reply_markup=markup )
     else: # no photo

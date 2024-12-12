@@ -22,7 +22,7 @@ from tgbot.models.sql_request import select_moderation_user_id, select_user, sel
     update_complaint_decision, select_column_data, select_user_anketa, select_all_users_mailing, \
     insert_rejecting_verification, \
     select_rejection_user, delete_rejecting_verification, insert_block_user_description, select_block_user_description, \
-    delete_block_user_description, select_user_moderation
+    delete_block_user_description, select_user_moderation, select_user_id_moderation
 from tgbot.services.auxiliary_functions import edit_message, format_text_profile
 
 
@@ -44,7 +44,6 @@ async def text_verify_user(user=None, user_id = None, session=None, type_profile
     correct_date_birthday = date_birthday.strftime( "%d-%m-%Y" )
     rejection_verification = await select_rejection_user(session=session, user_id=user_id)
     block_user_description = await select_block_user_description(session=session, user_id=user_id)
-    reward_user = ''
     if type_profile is None:
         text += f"Новый пользователь:\n"
     elif type_profile == 'search_user':
@@ -57,9 +56,10 @@ async def text_verify_user(user=None, user_id = None, session=None, type_profile
     f"Пол: {'женский' if user['gender']=='women' else 'мужской'}\n" \
     f"Дата рождения: {correct_date_birthday}\n" \
     f"Город проживания: {user['city']}\n" \
+    f"Практики: {user['practices']}\n" \
+    f"Табу: {user['tabu']}\n" \
     f"Партнер из другого города: {'Да' if user['partner_another_city'] else 'Нет'}\n" \
-    f"Минимальный возраст: {user['min_age']}\n" \
-    f"Максимальный возраст: {user['max_age']}\n" \
+    f"Возраст: {user['min_age']} - {user['max_age']}\n" \
     f"Дата регистрации :{correct_time_reg}\n"
     if len(rejection_verification) > 0:
         text += f'Причина отклонения верификации: {rejection_verification[0]["description"]}\n'
@@ -83,7 +83,6 @@ async def verification(message:Union [types.Message, types.CallbackQuery], page 
     users = await select_user_anketa_verefication(session=session)
     logging.info(len(users))
     logging.info(page)
-
     if len(users) == 0:
         await edit_message(message=message, text='анкет нет')
         return
@@ -93,6 +92,7 @@ async def verification(message:Union [types.Message, types.CallbackQuery], page 
     photos = await select_first_photo( session=session, user_id=user_profile['user_id'] )
     text = await text_verify_user(user=user_profile, session=session)
     kb = await verify_user_kb(user_id=user_profile['user_id'], page=page)
+    text+= f'Страница {page+1} из {len(users)}'
     if len(photos)<1:
         await message.delete()
         await edit_message(message=message, text=text, markup=kb)
@@ -759,7 +759,10 @@ async def search_user_id_telegram_state(message:Union[types.Message, types.Callb
     session = message.bot.data['session_maker']
     if user_id is None:
         id_m = message.text
-        user_info_all = await select_user_moderation(session=session, id=id_m)
+        if int(id_m) < 100000:
+            user_info_all = await select_user_moderation(session=session, id=id_m)
+        else:
+            user_info_all = await select_user_id_moderation(session=session, user_id=id_m)
         id_user = user_info_all[0]['user_id']
     else:
         id_user = user_id

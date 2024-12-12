@@ -427,6 +427,13 @@ async def select_user_moderation(session, id):
             answer2 = [dict( r._mapping ) for r in answer.fetchall()]
             return answer2
 
+async def select_user_id_moderation(session, user_id):
+    request = select(*[col for col in Users.__table__.c]).where( Users.user_id == user_id )
+    with session() as ses:
+        with ses.begin():
+            answer = ses.execute( request )
+            answer2 = [dict( r._mapping ) for r in answer.fetchall()]
+            return answer2
 async def select_user_name(session, user_id):
     request = select(Users.username).where( Users.user_id == user_id )
     with session() as ses:
@@ -443,7 +450,7 @@ async def select_user_anketa_verefication(session):
                                                                        Users.status != 'moderator',
                                                                        Users.status != 'admin',
                                                                        Users.status != 'delete_user',
-                                                                       Users.status != 'ver_user',
+                                                                       Users.status != 'no_ver_user',
                                                                        )
                                                                 )
     with session() as ses:

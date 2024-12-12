@@ -574,6 +574,11 @@ async def verify_user_kb(user_id=0, all_info_user=None, page = 0, type_profile=N
                                                                     page=page, tp=tp ) ) )
     markup.insert(
         InlineKeyboardButton( text='Написать', callback_data=verify_user_cd.new( callback='write', user_id=user_id, page=page, tp=tp ) ) )
+    user_link = f'tg://user?id={user_id}'
+    markup.insert(
+        InlineKeyboardButton( text='Написать по ссылке', url= user_link,
+                              callback_data=verify_user_cd.new( callback='write_url', user_id=user_id, page=page,
+                                                                tp=tp ) ) )
     if type_profile is None:
         markup.add(
             InlineKeyboardButton( text='Дальше',
