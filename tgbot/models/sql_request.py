@@ -30,6 +30,8 @@ async def insert_users(session, params, value = None):
     birthday =params['birthday'],
     city = params['city'],
     about_my_self = params['about_me'],
+    your_position = params['your_position'],
+    partner_position = params['partner_position'],
     tabu = params['tabu'],
     practices = params['practice'],
     partner_another_city =params['partner_another_city'],
@@ -165,7 +167,7 @@ async def select_user_anketa(session, user_id):
             interaction_format = user.interaction_format
             my_gender = user.gender
             my_gender_partner = user.gender_partner
-
+            partner_position = user.partner_position
             today = datetime.datetime.today()
             min_birthday = today - datetime.timedelta( days=(365 * (max_age +1 )) )
             max_birthday = today - datetime.timedelta( days=(365 * (min_age + 1)) )
@@ -238,6 +240,9 @@ async def select_user_anketa(session, user_id):
                     Users.gender ==  my_gender_partner,
                 Users.gender_partner == my_gender
             )
+            )
+            request = request.where(
+                    Users.your_position == partner_position,
             )
             answer = ses.execute( request )
             answer2 = [dict( r._mapping ) for r in answer.fetchall()]
@@ -451,6 +456,7 @@ async def select_user_anketa_verefication(session):
                                                                        Users.status != 'admin',
                                                                        Users.status != 'delete_user',
                                                                        Users.status != 'no_ver_user',
+                                                                       Users.status != 'block_user',
                                                                        )
                                                                 )
     with session() as ses:

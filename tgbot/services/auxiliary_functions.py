@@ -14,7 +14,6 @@ from aiogram.utils.exceptions import MessageCantBeEdited, BadRequest, MessageToE
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from geopy import Nominatim
 from geopy.adapters import AioHTTPAdapter
-from yoomoney import Quickpay
 
 from tgbot.config import load_config
 from tgbot.models.engine import create_engine_db, get_session_maker
@@ -709,6 +708,8 @@ async def format_text_profile(anket, session, type_profile=None, reward=None, re
     interaction_format = anket['interaction_format']
     gender = anket['gender']
     gender_partner = anket['gender_partner']
+    my_position = anket['your_position']
+    partner_position = anket['partner_position']
     text=''
     if type_profile =='favorites_profile':
         text = f'ПОНРАВИЛИСЬ ВАМ\n\n'
@@ -720,6 +721,8 @@ async def format_text_profile(anket, session, type_profile=None, reward=None, re
         text = f'НЕ ПОНРАВИЛИСЬ ВАМ\n\n'
     text += f'Имя: {name}. Возраст: {age}\n'
     text += f'Пол: {gender_russia[f"{gender}"]}. Ищю пол: {gender_russia[f"{gender_partner}"]}\n'
+    text += f'Моя позиция: {my_position}.\n'
+    text += f'Ищу позицию: {partner_position}.\n'
     text += f'Город: {city}\n'
     correct_date = last_time.strftime("%d-%m-%Y")
     text += f'Последнее посещение: {correct_date}\n'
@@ -793,20 +796,20 @@ async def insert_like_dislake_all(session, user_id, partner_user_id, reaction):
     else:
         return
 
-async def creating_bill(data, user_id):
-    all_info = []
-    for dat in data:
-        quickpay = Quickpay(
-            receiver="410012030256059",
-            quickpay_form="shop",
-            targets="subscription_bot",
-            paymentType="SB",
-            sum=int(dat["price"]),
-            label=f'{user_id}-{dat["title"]}-{int(dat["price"])}'
-        )
-        url_paid = quickpay.redirected_url
-        all_info.append({'title': dat["title"], 'price': int(dat["price"]), 'url_paid': url_paid})
-    return all_info
+# async def creating_bill(data, user_id):
+#     all_info = []
+#     for dat in data:
+#         quickpay = Quickpay(
+#             receiver="410012030256059",
+#             quickpay_form="shop",
+#             targets="subscription_bot",
+#             paymentType="SB",
+#             sum=int(dat["price"]),
+#             label=f'{user_id}-{dat["title"]}-{int(dat["price"])}'
+#         )
+#         url_paid = quickpay.redirected_url
+#         all_info.append({'title': dat["title"], 'price': int(dat["price"]), 'url_paid': url_paid})
+#     return all_info
 
 async def clear_table():
     config = load_config(".env")

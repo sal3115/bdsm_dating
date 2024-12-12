@@ -16,6 +16,8 @@ class Users(Base):
     birthday = Column(Date)
     city = Column( String )
     about_my_self = Column(String)
+    your_position = Column(String)
+    partner_position = Column(String)
     practices = Column(String)
     interaction_format = Column(String)
     gender_partner = Column(String, default='woman')
