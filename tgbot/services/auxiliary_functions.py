@@ -721,7 +721,7 @@ async def format_text_profile(anket, session, type_profile=None, reward=None, re
         text = f'НЕ ПОНРАВИЛИСЬ ВАМ\n\n'
     text += f'Имя: {name}. Возраст: {age}\n'
     text += f'Пол: {gender_russia[f"{gender}"]}. Ищю пол: {gender_russia[f"{gender_partner}"]}\n'
-    text += f'Моя позиция: {my_position}.\n'
+    text += f'Позиция: {my_position}.\n'
     text += f'Ищу позицию: {partner_position}.\n'
     text += f'Город: {city}\n'
     correct_date = last_time.strftime("%d-%m-%Y")

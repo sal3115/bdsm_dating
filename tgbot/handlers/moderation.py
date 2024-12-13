@@ -152,7 +152,7 @@ async def no_verification(message:types.Message, state:FSMContext):
     finally:
         await state.finish()
         if type_profile == 0 or type_profile == '0':
-            await verification( message=message, page=page + 1 )
+            await verification( message=message, page=page )
         elif type_profile == 'search_user':
             pass
         else:
@@ -240,7 +240,7 @@ async def verify_kb(call: types.CallbackQuery, callback_data:dict, counter=0, st
             await delete_rejecting_verification(session=session, user_id=user_id_profile)
         await call.answer("Пользователь верифицирован")
         if type_profile == 0 or type_profile=='0':
-            await verification(message=call, page = page+1)
+            await verification(message=call, page = page)
         elif type_profile == 'search_user':
             await search_user_id_telegram_state(message=call, user_id=user_id_profile)
     elif callback == 'no_verify':
@@ -353,11 +353,16 @@ async def block_user_state(message:types.Message, state:FSMContext):
     data_state = await state.get_data()
     user_id_profile = data_state['user_id']
     page = data_state['page']
+    type_profile = data_state['type_profile']
     session = message.bot.data['session_maker']
     await update_user_info( session=session, user_id=user_id_profile, status='block_user' )
     await insert_block_user_description(session=session, user_id=user_id_profile, description=reason_for_blocking)
-    text = 'Данный пользователь заблокирован'
-    await edit_message(message=message, text=text)
+    logging.info(type_profile)
+    if type_profile == '0' or type_profile == 0:
+        await verification(message=message, page=page)
+    else:
+        text = 'Данный пользователь заблокирован'
+        await edit_message(message=message, text=text)
     await state.finish()
 
 

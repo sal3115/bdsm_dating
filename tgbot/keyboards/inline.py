@@ -558,19 +558,21 @@ async def verify_user_kb(user_id=0, all_info_user=None, page = 0, type_profile=N
         markup.insert(
             InlineKeyboardButton( text='Отклонить', callback_data=verify_user_cd.new( callback='no_verify', user_id=user_id, page=page, tp=tp ) ) )
     elif type_profile == 'search_user':
-        logging.info(all_info_user)
-        if all_info_user['status'] == 'block':
-            markup.add(
-                InlineKeyboardButton( text='Разблокировать',
-                                      callback_data=verify_user_cd.new( callback='unlock', user_id=user_id, page=page , tp=tp) ) )
-        else:
-            markup.add(
-                InlineKeyboardButton( text='Заблокировать',
-                                      callback_data=verify_user_cd.new( callback='lock', user_id=user_id,
-                                                                        page=page, tp=tp ) ) )
+
         markup.insert(
             InlineKeyboardButton( text='Изменить данные',
                                   callback_data=verify_user_cd.new( callback='edit_user', user_id=user_id,
+                                                                     page=page, tp=tp ) ) )
+    logging.info(all_info_user)
+    if type_profile is not None and all_info_user['status'] == 'block':
+        markup.add(
+            InlineKeyboardButton( text='Разблокировать',
+                                  callback_data=verify_user_cd.new( callback='unlock', user_id=user_id, page=page,
+                                                                    tp=tp ) ) )
+    else:
+        markup.add(
+            InlineKeyboardButton( text='Заблокировать',
+                                  callback_data=verify_user_cd.new( callback='lock', user_id=user_id,
                                                                     page=page, tp=tp ) ) )
     markup.insert(
         InlineKeyboardButton( text='Написать', callback_data=verify_user_cd.new( callback='write', user_id=user_id, page=page, tp=tp ) ) )
