@@ -321,6 +321,7 @@ async def favorite_profile_kb(user_id, page):
     markup.add(InlineKeyboardButton(text='Не понравились мне', callback_data=interesting_cb.new(callback='not_interested_me', user_id=user_id, page=page)))
     markup.add(InlineKeyboardButton(text='Интересуются мной', callback_data=interesting_cb.new(callback='interested_me', user_id=user_id, page=page)))
     markup.add(InlineKeyboardButton(text='Взаимный интерес', callback_data=interesting_cb.new(callback='mutual_interest', user_id=user_id, page=page)))
+    markup.add( InlineKeyboardButton( text='Оформить подписку', callback_data=my_profile_new_cd.new( callback='get_subscribe' ) ) )
     return markup
 
 
