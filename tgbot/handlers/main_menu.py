@@ -27,7 +27,7 @@ async def first_page(message:Union[ types.Message, types.CallbackQuery]):
     text = text_dict['qw_23']
     kb = await main_menu_kb()
     await edit_message(message=message, text=text, markup=kb)
-    # await message.answer(text=text, reply_markup=kb)
+
 
 async def blocking_messages(message:types.Message):
     await message.delete()

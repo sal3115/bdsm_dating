@@ -168,6 +168,7 @@ async def select_user_anketa(session, user_id):
             my_gender = user.gender
             my_gender_partner = user.gender_partner
             partner_position = user.partner_position
+            my_position = user.your_position
             today = datetime.datetime.today()
             min_birthday = today - datetime.timedelta( days=(365 * (max_age +1 )) )
             max_birthday = today - datetime.timedelta( days=(365 * (min_age + 1)) )
@@ -242,7 +243,10 @@ async def select_user_anketa(session, user_id):
             )
             )
             request = request.where(
+                and_(
                     Users.your_position == partner_position,
+                    Users.partner_position == my_position
+                )
             )
             answer = ses.execute( request )
             answer2 = [dict( r._mapping ) for r in answer.fetchall()]
@@ -527,10 +531,8 @@ async def select_complaints_join(session, user_id, complaints_user_id):
     # Составляем запрос
     request = select(
         user.first_name.label( 'user_first_name' ),
-        user.last_name.label( 'user_last_name' ),
         user.username.label( 'user_username'),
         complaints_user.first_name.label( 'complaints_user_first_name' ),
-        complaints_user.last_name.label( 'complaints_user_last_name' ),
         complaints_user.username.label('complaints_user_username'),
         ComplaintsTable.complaints
     ).join( user, ComplaintsTable.id_user == user.user_id ).join(

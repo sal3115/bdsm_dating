@@ -5,6 +5,7 @@ from typing import Union
 
 from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
+from aiogram.utils import exceptions
 from aiogram.utils.exceptions import BotBlocked
 
 from tgbot.handlers.main_menu import scrolling_photo_func
@@ -54,6 +55,8 @@ async def text_verify_user(user=None, user_id = None, session=None, type_profile
     f"Имя: {user['first_name']}\n" \
     f"User_name: {user['username']}\n" \
     f"Пол: {'женский' if user['gender']=='women' else 'мужской'}\n" \
+    f"Позиция: {user['your_position']}\n" \
+    f"Позиция партнера {user['partner_position']}\n" \
     f"Дата рождения: {correct_date_birthday}\n" \
     f"Город проживания: {user['city']}\n" \
     f"Практики: {user['practices']}\n" \
@@ -93,18 +96,22 @@ async def verification(message:Union [types.Message, types.CallbackQuery], page 
     text = await text_verify_user(user=user_profile, session=session)
     kb = await verify_user_kb(user_id=user_profile['user_id'], page=page)
     text+= f'Страница {page+1} из {len(users)}'
-    if len(photos)<1:
-        await message.delete()
-        await edit_message(message=message, text=text, markup=kb)
-    elif len(photos) > 0:
-        await message.delete()
-        if len(text) > 1024:
-            new_text = text.split('Дата регистрации')
-            await message.answer_photo(photo=photos[0]['photo_id'],caption=new_text[0])
-            await edit_message(message=message, text=f'Дата регистрации{new_text[1]}', markup=kb)
-        else:
-            await edit_message(message=message, photo=photos[0]['photo_id'],text=text, markup=kb)
-
+    try:
+        if len(photos)<1:
+            await message.delete()
+            await edit_message(message=message, text=text, markup=kb)
+        elif len(photos) > 0:
+            await message.delete()
+            if len(text) > 1024:
+                new_text = text.split('Дата регистрации')
+                await message.answer_photo(photo=photos[0]['photo_id'],caption=new_text[0])
+                await edit_message(message=message, text=f'Дата регистрации{new_text[1]}', markup=kb)
+            else:
+                await edit_message(message=message, photo=photos[0]['photo_id'],text=text, markup=kb)
+    except exceptions.BadRequest as e:
+        text = f'Юзер c ид: {user_profile["user_id"]}, был переведен в статус no_ver_user по ошибки {e}'
+        await update_user_info(session=session, user_id=user_profile["user_id"], status = 'no_ver_user')
+        await message.bot.send_message(chat_id=message.chat.id, text=text)
 
 #Фото
 async def scrolling_photo_moderation_cb(call: types.CallbackQuery, callback_data: dict):
@@ -391,12 +398,11 @@ async def complaints_moderation(message:Union[types.Message, types.CallbackQuery
     logging.info(['-------------page complaints----------', page])
     complaints_one = complaints_all[0+page]
     logging.info(['-------------complaints_one----------', complaints_one])
-
     user_id = complaints_one['id_user']
     complaints_user_id = complaints_one['id_user_complaints']
     data_text = await select_complaints_join(session=session, user_id=user_id, complaints_user_id=complaints_user_id)
-    text = f'Пользователь <a href="https://t.me/{data_text[0]["user_username"]}">{data_text[0]["user_first_name"]} {data_text[0]["user_last_name"]}</a>' \
-           f' написал жалобу на пользователя <a href="https://t.me/{data_text[0]["complaints_user_username"]}">{data_text[0]["complaints_user_first_name"]} {data_text[0]["complaints_user_last_name"]}</a>' \
+    text = f'Пользователь <a href="https://t.me/{data_text[0]["user_username"]}">{data_text[0]["user_first_name"]}</a>' \
+           f' написал жалобу на пользователя <a href="https://t.me/{data_text[0]["complaints_user_username"]}">{data_text[0]["complaints_user_first_name"]}</a>' \
            f' с текстом:\n{data_text[0]["complaints"]}'
     kb = await complaints_kb(complaints_user_id=complaints_user_id, page=page)
     await edit_message(message=message, text=text, markup=kb)

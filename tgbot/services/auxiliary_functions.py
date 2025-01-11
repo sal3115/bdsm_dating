@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 import re
 import textwrap
 from datetime import datetime, timedelta, date
@@ -12,6 +13,8 @@ from aiogram.types import InputMedia, InputMediaVideo, InputFile, InputMediaPhot
 from aiogram.utils.exceptions import MessageCantBeEdited, BadRequest, MessageToEditNotFound, MessageToDeleteNotFound, \
     MessageNotModified, InlineKeyboardExpected
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from claptcha import Claptcha
+from PIL import Image, ImageDraw
 from geopy import Nominatim
 from geopy.adapters import AioHTTPAdapter
 
@@ -630,10 +633,14 @@ async def edit_message(message: Union[types.Message, types.CallbackQuery], text=
         last_message = None
     if isinstance(message, types.CallbackQuery):
         if len(new_text) <= 1:
+            logging.info(1)
             message_callback = await send_message_callback(callback=message,text=text ,last_message=last_message, photo=photo, markup=markup)
+            logging.info(1.2)
         else:
+            logging.info(2.1)
             counter = 1
             for n_t in new_text:
+                logging.info( 2.2 )
                 if counter == 1:
                     message_callback = await send_message_callback( callback=message, text=n_t,
                                                                     last_message=last_message,
@@ -650,8 +657,10 @@ async def edit_message(message: Union[types.Message, types.CallbackQuery], text=
                     counter += 1
     else: #types.Message
         if len(new_text) <=1:
+            logging.info(3)
             message_callback = await send_message_message(message=message, text=text, last_message=last_message, photo=photo, markup=markup)
         else:
+            logging.info(3.2)
             counter = 1
             for n_t in new_text:
                 if counter == 1:
@@ -739,7 +748,6 @@ async def format_text_profile(anket, session, type_profile=None, reward=None, re
         text+= f'\nМинимальный возраст: {min_age}'
         text +=f'\nМаксимальный возраст {max_age}'
         text+= f'\nМодерация: {tru_false_russia[str(moderation)]}'
-
     return text, user_id_anket
 
 
@@ -827,3 +835,51 @@ async def shedule_jobs():
     scheduler = AsyncIOScheduler()
     scheduler.add_job(clear_table, 'cron', day_of_week='mon-sun', hour=00, minute=00,)
     scheduler.start()
+
+
+
+class G:
+   def __init__(self):
+      keys = ['keyc']
+      for key in keys:
+         self.key = None
+
+
+def captcha():
+   G.keyc = (str([random.choice('АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЫЭЮЯ') for _ in range(6)])).replace("'", "").replace("[", "").replace("]", "").replace(" ", "").replace(",", "")
+#Отсюда собственно и берутся буквы из которых генирируется капча, а также мы убираем лишнее
+
+   c = Claptcha(G.keyc, "font.ttf") #G.keyc - переменная для ключа капчи, а "font.ttf" - название файла со шрифтом
+
+   codcap, image = c.image
+   codcap, bytes = c.bytes
+   codcap, file = c.write('captcha.png')
+   image = Image.open("captcha.png")
+   draw = ImageDraw.Draw(image)
+   width = image.size[0]
+   height = image.size[1]
+   pix = image.load()
+   factor = 100 #Это значение генирации шума, Максимум 255
+
+   for i in range(width):
+      for j in range(height):
+         rand = random.randint(-factor, factor)
+         a = pix[i, j][0] + rand
+         b = pix[i, j][1] + rand
+         c = pix[i, j][2] + rand
+         if (a < 0):
+            a = 0
+         if (b < 0):
+            b = 0
+         if (c < 0):
+            c = 0
+         if (a > 255):
+            a = 255
+         if (b > 255):
+            b = 255
+         if (c > 255):
+            c = 255
+
+         draw.point((i, j), (a, b, c))
+   image.save("captcha.png", "PNG") #Сохраняем картинку
+   del draw #Удаляем кисть
