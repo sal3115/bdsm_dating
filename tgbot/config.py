@@ -19,6 +19,8 @@ class TgBot:
 
 @dataclass
 class Miscellaneous:
+    id_group: int
+    id_channel: int
     other_params: str = None
 
 
@@ -56,5 +58,8 @@ def load_config(path: str = None):
         yootoken = Yookassa(
             yootoken = env.str('YOOTOKEN')
         ),
-        misc=Miscellaneous()
+        misc=Miscellaneous(
+            id_group=env.int('ID_GROUP'),
+            id_channel=env.int('ID_CHANNEL')
+        )
     )

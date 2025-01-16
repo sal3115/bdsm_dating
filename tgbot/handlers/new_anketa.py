@@ -7,14 +7,17 @@ from aiogram import types, Dispatcher
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram.dispatcher import FSMContext
 
+from tgbot.handlers.resend_chanell_and_group import resend_group_free
 from tgbot.keyboards.inline import func_kb_back_2, func_kb_gender, yes_no_button, \
     func_kb_position, yes_no_cb, interaction_format_button, interaction_format_cb, yes_no_kb_confirm_city, \
-    yes_no_cb_confirm_city
+    yes_no_cb_confirm_city, resend_group_keyboard, resend_group_keyboard_cd, confirm_resend_platform, \
+    confirm_resend_platform_cd
 from tgbot.keyboards.reply import main_menu_kb
 from tgbot.misc.states import FSM_hello
-from tgbot.models.sql_request import insert_users, insert_photo, update_first_photo
+from tgbot.models.sql_request import insert_users, insert_photo, update_first_photo, select_placement_group_channel, \
+    insert_resend_free_platform, select_placement_group_channel_one
 from tgbot.services.anketa_utulites import checking_russian_letters
-from tgbot.services.auxiliary_functions import date_formats, add_photo_func, check_city
+from tgbot.services.auxiliary_functions import date_formats, add_photo_func, check_city, update_info_group_channel
 from tgbot.services.calculate_age import calculateAge
 from tgbot.services.photo_and_text import text_dict
 
@@ -398,10 +401,58 @@ async def another_city_interaction_format(message: Union[types.Message, types.Ca
     data = await state.get_data()
     logging.info( msg=[data, await state.get_state()] )
 
-#принимаем онлайн практики городов  завершающий этап
-async def interaction_format_finish(message: Union[types.Message, types.CallbackQuery], state:FSMContext,
+#принимаем онлайн практики   завершающий этап
+# async def interaction_format_finish(message: Union[types.Message, types.CallbackQuery], state:FSMContext,
+#                               callback_data: dict = None, album: List[types.Message]= None):
+#     text = text_dict['qw_22']
+#     if isinstance(message, types.Message):
+#         if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
+#             await message.answer( text=text)
+#             await FSM_hello.finish.set()
+#             data = await state.get_data()
+#             logging.info( msg=[data, await state.get_state()])
+#         else:
+#             await message.delete()
+#             return
+#     else:
+#         await message.answer()
+#         message = message.message
+#         answer = callback_data['callback']
+#         await state.update_data(interaction_format=answer)
+#         data = await state.get_data()
+#         session = message.bot.data['session_maker']
+#         await insert_users(session, data)
+#         user_id = message.chat.id
+#         if data['photo'] is not None:
+#             photos = data['photo']
+#             if len(photos)>0:
+#                 if len(photos) == 1:
+#                     logging.info(len(photos))
+#                     logging.info(photos)
+#                     file_id = photos[0]['file_id']
+#                     unique_id = photos[0]['unique_id']
+#                     await insert_photo( session=session, user_id=user_id, photo_id=file_id, unique_id=unique_id )
+#                 else:
+#                     logging.info(len(data['photo']))
+#                     for photo in photos:
+#                         file_id = photo['file_id']
+#                         unique_id = photo['unique_id']
+#                         await insert_photo( session=session, user_id=user_id, photo_id=file_id,
+#                                             unique_id=unique_id )
+#                 await update_first_photo(session=session, user_id=user_id, photo_id=photos[0]['file_id'])
+#         await message.edit_reply_markup()
+#         if data['partner_position'] == 'Доминирование':
+#             await resend_group_free(id_user=user_id, type_profile='Доминирование')
+#         elif data['partner_position'] == 'Подчинение':
+#             await resend_group_free( id_user=user_id, type_profile='Подчинение' )
+#         kb = await main_menu_kb()
+#         await state.finish()
+#         await message.answer( text=text, reply_markup=kb )
+
+
+async def interaction_format_resend(message: Union[types.Message, types.CallbackQuery], state:FSMContext,
                               callback_data: dict = None, album: List[types.Message]= None):
-    text = text_dict['qw_22']
+    text = text_dict['Размещение в канале']
     if isinstance(message, types.Message):
         if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
             await message.answer( text=text)
@@ -412,35 +463,156 @@ async def interaction_format_finish(message: Union[types.Message, types.Callback
             await message.delete()
             return
     else:
-        await message.answer()
+        data = await state.get_data()
+        callback = message
         message = message.message
         answer = callback_data['callback']
-        await state.update_data(interaction_format=answer)
-        data = await state.get_data()
+        if answer != 'no' or answer != 'yes':
+            await state.update_data(interaction_format=answer)
         session = message.bot.data['session_maker']
-        await insert_users(session, data)
-        user_id = message.chat.id
-        if data['photo'] is not None:
-            photos = data['photo']
-            if len(photos)>0:
-                if len(photos) == 1:
-                    logging.info(len(photos))
-                    logging.info(photos)
-                    file_id = photos[0]['file_id']
-                    unique_id = photos[0]['unique_id']
-                    await insert_photo( session=session, user_id=user_id, photo_id=file_id, unique_id=unique_id )
-                else:
-                    logging.info(len(data['photo']))
-                    for photo in photos:
-                        file_id = photo['file_id']
-                        unique_id = photo['unique_id']
-                        await insert_photo( session=session, user_id=user_id, photo_id=file_id,
-                                            unique_id=unique_id )
-                await update_first_photo(session=session, user_id=user_id, photo_id=photos[0]['file_id'])
-        await message.edit_reply_markup()
-        kb = await main_menu_kb()
-        await state.finish()
-        await message.answer( text=text, reply_markup=kb )
+        check_groups = await select_placement_group_channel(session=session)
+        if len(check_groups) > 0:
+            bot = message.bot
+            await update_info_group_channel( session=session, bot=bot )
+            if 'selected' not in data:
+                selected = set(str(group['id']) for group in check_groups)
+                await state.update_data( selected=selected)
+                logging.info(selected)
+            else:
+                selected = data['selected']
+            if 'anonymous' not in data:
+                await state.update_data(anonymous=True )
+                anonymous = True
+            else:
+                anonymous = data['anonymous']
+            for select1 in selected:
+                logging.info(f'interaction_format_resend {type(select1)}')
+            kb = await resend_group_keyboard(check_groups, selected=selected, anonymous=anonymous)
+            for num, group in enumerate(check_groups, start=1):
+                text += f'{num}. <a href="{group["url"]}">{group["title_channel_group"]}</a>\n'
+            await message.answer( text=text, reply_markup=kb )
+            await FSM_hello.resend_group.set()
+        else:
+            await insert_all_info(message=message, state=state)
+        await callback.message.edit_reply_markup()
+    data = await state.get_data()
+    logging.info( msg=[data, await state.get_state()] )
+
+
+
+async def resend_group_keyboard_toggle(call:types.CallbackQuery, state:FSMContext, callback_data:dict):
+    id_channel = str(callback_data['id_channel'])
+    data = await state.get_data()
+    selected = data["selected"]
+    anonymous = data['anonymous']
+    logging.info(f'selected {selected}')
+    logging.info(f'id_channel {id_channel} - {type(id_channel)}')
+    if id_channel in selected:
+        selected.remove( id_channel )
+    else:
+        selected.add( id_channel )
+    await state.update_data(selected=selected)
+    session = call.message.bot.data['session_maker']
+    logging.info(selected)
+    for select1 in selected:
+        logging.info( f'interaction_format_resend {type( select1 )}' )
+    check_groups = await select_placement_group_channel( session=session )
+    await call.message.edit_reply_markup(
+        reply_markup=await resend_group_keyboard(all_group=check_groups, selected=selected, anonymous=anonymous ))
+    await call.answer()
+
+
+async def resend_group_keyboard_anonymous(call:types.CallbackQuery, state:FSMContext, callback_data:dict):
+    anonymous = callback_data['anonymous']
+    data = await state.get_data()
+    selected_anonymous = data["anonymous"]
+    if selected_anonymous:
+        selected_anonymous = False
+    else:
+        selected_anonymous = True
+    await state.update_data(anonymous=selected_anonymous)
+    session = call.message.bot.data['session_maker']
+    check_groups = await select_placement_group_channel( session=session )
+    selected = data['selected']
+    for select1 in selected:
+        logging.info( f'interaction_format_resend {type( select1 )}' )
+    await call.message.edit_reply_markup(
+        reply_markup=await resend_group_keyboard(all_group=check_groups, selected=selected, anonymous=selected_anonymous ))
+    await call.answer()
+
+async def resend_group_keyboard_done(call:types.CallbackQuery, state:FSMContext, callback_data:dict):
+    data = await state.get_data()
+    selected = data["selected"]
+    anonymous = data["anonymous"]
+    # Отправляем результат и сбрасываем состояние
+    kb = await confirm_resend_platform()
+    if selected:
+        session = call.bot.data['session_maker']
+        text = f"Вы выбрали:\n"
+        for num, id_platform in enumerate(selected, start=1):
+            group = await select_placement_group_channel_one(session=session, id_mini=id_platform)
+            text += f'{num}. <a href="{group[0]["url"]}">{group[0]["title_channel_group"]}</a>\n'
+        text += f'{"Анонимное " if anonymous else "Не анонимное"} размещение'
+        await call.message.answer( text=text, reply_markup=kb )
+    else:
+        await call.message.answer( "Вы ничего не выбрали.", reply_markup=kb )
+    await call.message.delete()
+
+
+async def confirm_resend_platform_func(call:types.CallbackQuery, callback_data: dict, state:FSMContext):
+    logging.info('confirm_resend_platform_func')
+    callback = callback_data['callback']
+    data = await state.get_data()
+    selected = data["selected"]
+    anonymous = data["anonymous"]
+    if callback == 'yes':
+        user_id = data['user_id']
+        session = call.message.bot.data['session_maker']
+        await insert_all_info(message=call, state=state)
+        for id_platform in selected:
+            await insert_resend_free_platform(session=session, user_id=user_id, id_platform=id_platform, anonymous=anonymous)
+    elif callback == 'no':
+        await interaction_format_resend(message=call, state=state, callback_data=callback_data)
+    else:
+        logging.info(f'Что то пошло не так функция confirm_resend_platform_func {callback}')
+        await insert_all_info(message=call, state=state)
+
+
+async def resend_group_keyboard_cancel(call:types.CallbackQuery, state:FSMContext, callback_data:dict):
+    await insert_all_info(message=call, state=state)
+
+async def insert_all_info(message: Union[types.Message, types.CallbackQuery], state:FSMContext=None):
+    if isinstance(message, types.CallbackQuery):
+        message = message.message
+    data = await state.get_data()
+    session = message.bot.data['session_maker']
+    await insert_users(session, data)
+    user_id = data['user_id']
+    if data['photo'] is not None:
+        photos = data['photo']
+        if len(photos)>0:
+            if len(photos) == 1:
+                logging.info(len(photos))
+                logging.info(photos)
+                file_id = photos[0]['file_id']
+                unique_id = photos[0]['unique_id']
+                await insert_photo( session=session, user_id=user_id, photo_id=file_id, unique_id=unique_id )
+            else:
+                logging.info(len(data['photo']))
+                for photo in photos:
+                    file_id = photo['file_id']
+                    unique_id = photo['unique_id']
+                    await insert_photo( session=session, user_id=user_id, photo_id=file_id,
+                                        unique_id=unique_id )
+            await update_first_photo(session=session, user_id=user_id, photo_id=photos[0]['file_id'])
+    await message.edit_reply_markup()
+    kb = await main_menu_kb()
+    await state.finish()
+    text = text_dict['qw_22']
+    await message.answer( text=text, reply_markup=kb )
+
+
+
 async def back_button(message: Message, state: FSMContext):
     curent_state = await state.get_state()
     logging.info(curent_state)
@@ -518,10 +690,13 @@ def register_anketa(dp:Dispatcher):
     dp.register_message_handler( min_age_max_age, state=FSM_hello.min_age)
     dp.register_message_handler( max_age_another_city, state=FSM_hello.max_age)
     dp.register_callback_query_handler( another_city_interaction_format, yes_no_cb.filter(), state=FSM_hello.another_city)
-    dp.register_callback_query_handler(interaction_format_finish, interaction_format_cb.filter(), state= FSM_hello.interaction_format)
-    dp.register_message_handler( interaction_format_finish, state=FSM_hello.interaction_format)
-
-
+    dp.register_callback_query_handler(interaction_format_resend, interaction_format_cb.filter(), state= FSM_hello.interaction_format)
+    dp.register_message_handler( interaction_format_resend, state=FSM_hello.interaction_format)
+    dp.register_callback_query_handler(resend_group_keyboard_toggle, resend_group_keyboard_cd.filter(action="toggle"), state=FSM_hello.resend_group)
+    dp.register_callback_query_handler(resend_group_keyboard_done, resend_group_keyboard_cd.filter(action="done"), state=FSM_hello.resend_group)
+    dp.register_callback_query_handler(resend_group_keyboard_cancel, resend_group_keyboard_cd.filter(action="cancel"), state=FSM_hello.resend_group)
+    dp.register_callback_query_handler(resend_group_keyboard_anonymous, resend_group_keyboard_cd.filter(action ='anonymous'), state=FSM_hello.resend_group)
+    dp.register_callback_query_handler(confirm_resend_platform_func, confirm_resend_platform_cd.filter(), state=FSM_hello.resend_group)
 
 
 

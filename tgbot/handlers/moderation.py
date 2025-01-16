@@ -9,6 +9,7 @@ from aiogram.utils import exceptions
 from aiogram.utils.exceptions import BotBlocked
 
 from tgbot.handlers.main_menu import scrolling_photo_func
+from tgbot.handlers.resend_chanell_and_group import resend_group_free
 from tgbot.keyboards.inline import verify_user_kb, verify_user_cd, \
     scrolling_photos_moderation_cd, cancel_inline_kb, cancel_cd, complaints_kb, complaints_cd, complaints_profile_kb, \
     complaints_profile_cd, scrolling_photos_complains_cd, cancel_reward_inline_kb, cancel_reward_cd, \
@@ -202,6 +203,8 @@ async def write_moderation(message:types.Message, state:FSMContext):
             logging.info(write_moderation)
             logging.info(data)
 
+
+
 #Callbback главного меню
 async def verify_kb(call: types.CallbackQuery, callback_data:dict, counter=0, state:FSMContext=None):
     callback = callback_data['callback']
@@ -241,6 +244,8 @@ async def verify_kb(call: types.CallbackQuery, callback_data:dict, counter=0, st
             await update_user_info( session=session, user_id=user_id_profile, moderation=True,
                                     time_verif=datetime.datetime.now().date(), status='block_user' )
         else:
+            await resend_group_free(message=call, id_user=user_id_profile)
+
             await update_user_info(session=session, user_id=user_id_profile, moderation=True, time_verif=datetime.datetime.now().date(), status='user' )
         check_rejecttion = await select_rejection_user(session=session, user_id=user_id_profile)
         if len(check_rejecttion) > 0:

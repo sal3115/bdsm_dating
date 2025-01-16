@@ -3,21 +3,19 @@ from typing import Union
 
 from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import CommandStart
-from aiogram.types import MediaGroup, InputMedia
+from aiogram.types import InputFile
 from aiogram.utils import exceptions
 
 from tgbot.keyboards.inline import dating_keyboard, dating_keyboard_cb,  scrolling_photos, \
-    scrolling_photos_cb, favorite_profile_kb, interesting_cb, cancel_inline_kb, cancel_cd
+    scrolling_photos_cb, cancel_inline_kb, cancel_cd
 from tgbot.keyboards.reply import main_menu_kb
 from tgbot.misc.states import ComplaintsUser
 from tgbot.models.sql_request import select_user_anketa, select_photo, insert_like_dis, select_user, \
     select_user_profile_like, select_user_profile_like_me, select_user_profile_mutual_interest, select_first_photo, \
     insert_complaints, select_user_profile_not_interest, select_check_mutual_interest, select_check_interest, \
-    insert_daily_reaktion
+    insert_daily_reaktion, select_user_with_mini_id
 from tgbot.services.auxiliary_functions import edit_message, profile_viewer, format_text_profile, \
     insert_like_dislake_all
-from tgbot.services.calculate_age import calculateAge
 from tgbot.services.photo_and_text import text_dict, text_main_menu
 
 
@@ -26,7 +24,34 @@ async def first_page(message:Union[ types.Message, types.CallbackQuery]):
         message = message.message
     text = text_dict['qw_23']
     kb = await main_menu_kb()
-    await edit_message(message=message, text=text, markup=kb)
+    if message.get_args():
+        arg_start = message.get_args().split('=')
+        if arg_start[0] == 'profile':
+            session = message.bot.data['session_maker']
+            user_id_mini = arg_start[1]
+            profile = await select_user_with_mini_id(session=session, user_id=user_id_mini)
+            if profile[0]['user_id'] == message.chat.id:
+                text = 'Это ваша анкета, если хотите посмотреть свою анкету перейдите в пункт "Изменить анкету"'
+                await edit_message( message=message, text=text )
+                return
+            if len(profile) <=0:
+                text += '\n' \
+                        'Данного пользователя нет, возможно он удалился'
+                await edit_message( message=message, text=text, markup=kb )
+                return
+            text, id_anket = await format_text_profile(anket=profile[0], session=session)
+            kb = await dating_keyboard( user_id=id_anket )
+            first_photo = await select_first_photo( session=session, user_id=id_anket )
+            if len( first_photo ) > 0:
+                photo = first_photo[0]['photo_id']
+            else:
+                photo = InputFile( 'tgbot/misc/no_photo.jpg' )
+            await profile_viewer( message=message, text=text, photo=photo, markup=kb )
+        else:
+            await message.delete()
+        logging.info(message)
+    else:
+        await edit_message( message=message, text=text, markup=kb )
 
 
 async def blocking_messages(message:types.Message):

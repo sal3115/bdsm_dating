@@ -274,3 +274,78 @@ class PriceSubscription( Base ):
         }
         str_obj = json.dumps( obj )
         return str_obj
+
+
+class ResendGroupAndChannel( Base ):
+    __tablename__ = 'resend_group_channel_table'
+    id = Column( Integer, primary_key=True, autoincrement=True )
+    id_admin = Column( BigInteger)
+    id_channel_group = Column( BigInteger)
+    title_channel_group = Column(String)
+    type_channel_group = Column(String)
+    url = Column(String)
+
+
+    def __init__(self, id_admin=None, id_channel_group=None, title_channel_group=None, type_channel_group=None, url=None):
+        self.id_admin = id_admin
+        self.id_channel_group = id_channel_group
+        self.title_channel_group = title_channel_group
+        self.type_channel_group = type_channel_group
+        self.url = url
+    def __repr__(self):
+        obj = {
+            'id_admin': self.id_admin,
+            'id_channel_group': self.id_channel_group,
+            'title_channel_group': self.title_channel_group,
+            'type_channel_group': self.type_channel_group,
+            'url': self.url
+        }
+        str_obj = json.dumps( obj )
+        return str_obj
+
+
+class FeaturesResendGroupAndChannel( Base ):
+    __tablename__ = 'features_resend_channel_table'
+    id = Column( Integer, primary_key=True, autoincrement=True )
+    id_channel_group = Column( BigInteger,ForeignKey( "resend_group_channel_table.id" )  )
+    thread_message_id = Column( BigInteger )
+    features = Column( String )
+
+    def __init__(self,  id_channel_group=None, thread_message_id=None, features=None):
+        self.id_channel_group = id_channel_group
+        self.features = features
+        self.thread_message_id = thread_message_id
+
+    def __repr__(self):
+        obj = {
+            'id_channel_group': self.id_channel_group,
+            'features': self.features,
+            'thread_message_id': self.thread_message_id,
+        }
+        str_obj = json.dumps( obj )
+        return str_obj
+
+class ResendFreePlatform(Base):
+    __tablename__ = 'resend_free_platform_table'
+    id = Column( Integer, primary_key=True, autoincrement=True )
+    user_id = Column( BigInteger, ForeignKey( "Users.user_id" ))
+    id_platform = Column( BigInteger, ForeignKey( "resend_group_channel_table.id" ) )
+    message_id = Column( BigInteger )
+    features = Column( String )
+    anonymous = Column(Boolean)
+    def __init__(self, user_id=None, id_platform=None, message_id=None, features=None, anonymous=None):
+        self.user_id = user_id
+        self.id_platform = id_platform
+        self.features = features
+        self.message_id = message_id
+        self.anonymous = anonymous
+    def __repr__(self):
+        obj = {
+            'user_id': self.user_id,
+            'id_platform': self.id_platform,
+            'features': self.features,
+            'message_id': self.thread_message_id,
+            'anonymous': self.anonymous
+        }
+        str_obj = json.dumps( obj )
+        return str_obj

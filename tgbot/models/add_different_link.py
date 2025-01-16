@@ -9,7 +9,7 @@ from aiogram import types
 from aiogram.types import InputMedia
 
 from tgbot.models.engine import create_engine_db, get_session_maker
-from tgbot.models.sql_request import insert_users, select_photo
+from tgbot.models.sql_request import insert_users, select_photo, select_placement_group_channel_one
 from tgbot.services.auxiliary_functions import date_formats
 from tgbot.services.calculate_age import calculateAge
 
@@ -55,4 +55,9 @@ if __name__ == '__main__':
         check_date = await date_formats('20.02.2001')
         age = calculateAge(check_date)
         logging.info(age)
-    lll = loop.run_until_complete(test_date())
+
+
+    engine = create_engine_db( db_path='localhost', db_user='user_bdsm', db_pass='78O89p96', name_db='db_bdsm' )
+    session = get_session_maker( engine )
+    lll = loop.run_until_complete(select_placement_group_channel_one(session=session, id_mini=1, type_profile='Доминирование'))
+    logging.info(lll)

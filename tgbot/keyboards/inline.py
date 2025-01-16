@@ -8,7 +8,8 @@ import datetime
 
 from aiogram.utils.callback_data import CallbackData
 
-from tgbot.models.sql_request import  select_user_name
+from tgbot.models.Users import ResendGroupAndChannel
+from tgbot.models.sql_request import select_user_name, select_placement_group_channel
 
 
 async def func_kb_gender(gender=None):
@@ -337,21 +338,6 @@ async def ok_recommendation():
     markup = InlineKeyboardMarkup( row_width=1 )
     markup.add( InlineKeyboardButton( text='Ок', callback_data='ok' ) )
     return markup
-
-
-# my_profile_cd= CallbackData('my_profile_cal_bac', 'callback', 'user_id')
-# async def my_profile_kb(user_id):
-#     markup = InlineKeyboardMarkup( row_width=1)
-#     markup.add(InlineKeyboardButton( text='Посмотреть анкету', callback_data=my_profile_cd.new( callback='view_profile',
-#                                                                                              user_id=user_id ) ) )
-#     markup.add(
-#         InlineKeyboardButton( text='Изменить анкету', callback_data=my_profile_cd.new( callback='edit_profile', user_id=user_id ) ) )
-#     markup.add(
-#         InlineKeyboardButton( text='Изменить "о себе"', callback_data=my_profile_cd.new( callback='edit_about_me', user_id=user_id  ) ) )
-#     markup.add( InlineKeyboardButton( text='Изменить фото',
-#                                       callback_data=my_profile_cd.new( callback='edit_photo', user_id=user_id  ) ) )
-#     markup.add( InlineKeyboardButton( text='Оформить подписку', callback_data=my_profile_cd.new( callback='get_subscribe', user_id=user_id  ) ) )
-#     return markup
 
 my_profile_new_cd= CallbackData('mpn_cb', 'callback')
 async def my_profile_kb_new(user_id):
@@ -837,3 +823,39 @@ async def yes_no_kb_confirm_city():
     markup.insert( InlineKeyboardButton( text='Нет',
                                          callback_data=yes_no_cb_confirm_city.new( callback='no' ) ) )
     return markup
+
+test_keyboard_cd = CallbackData('tkcd', 'callback')
+async def test_keyboard():
+    markup = InlineKeyboardMarkup( row_width=2 )
+    markup.insert( InlineKeyboardButton( text='test',
+                                         callback_data=test_keyboard_cd.new(callback='test') ) )
+    return markup
+
+resend_group_keyboard_cd =  CallbackData('rgkcd', 'id_channel', 'action', 'anonymous')
+async def resend_group_keyboard(all_group, selected:set, anonymous):
+    markup = InlineKeyboardMarkup( row_width=2 )
+    for group in all_group:
+        id_channel = str(group['id'])
+        logging.info(f'id_channel {type(id_channel)} - {id_channel}')
+        for s in selected:
+            logging.info(f'selected {type(s)} - {s}')
+        text = f"{'✅ ' if id_channel in selected else ''}{group['title_channel_group']}"
+        markup.add( InlineKeyboardButton( text=text,
+                                             callback_data=resend_group_keyboard_cd.new(id_channel=id_channel, action='toggle', anonymous=anonymous) ) )
+
+    markup.add( InlineKeyboardButton(text=f'{"✅ " if anonymous else ""}Анонимное размещение', callback_data=resend_group_keyboard_cd.new(id_channel=0, action='anonymous',anonymous=anonymous)))
+    markup.add( InlineKeyboardButton(text='🚫Нет, не хочу', callback_data=resend_group_keyboard_cd.new(id_channel=0, action='cancel',anonymous=anonymous)))
+    markup.insert( InlineKeyboardButton(text='Готово', callback_data=resend_group_keyboard_cd.new(id_channel=0, action='done', anonymous=anonymous)))
+    return markup
+
+
+
+confirm_resend_platform_cd = CallbackData('crpcd', 'callback')
+async def confirm_resend_platform():
+    markup = InlineKeyboardMarkup( row_width=2 )
+    markup.insert( InlineKeyboardButton( text='Да',
+                                         callback_data=confirm_resend_platform_cd.new(callback='yes') ) )
+    markup.insert( InlineKeyboardButton( text='Нет',
+                                         callback_data=confirm_resend_platform_cd.new( callback='no' ) ) )
+    return markup
+

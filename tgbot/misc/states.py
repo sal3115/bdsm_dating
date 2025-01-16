@@ -20,7 +20,7 @@ class FSM_hello(StatesGroup):
     interaction_format = State()
     finish = State()
     choice_partner = State()
-
+    resend_group = State()
 
 
 class EditProfile(StatesGroup):
@@ -128,3 +128,7 @@ class BlockUser(StatesGroup):
 class EditUserModeration(StatesGroup):
     first_name_state = State()
     last_name_state = State()
+
+
+class CheckFunc(StatesGroup):
+    one_state = State()

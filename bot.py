@@ -26,7 +26,7 @@ from tgbot.middlewares.edit_message import ReplaceOrDeleteInlineKeyboard, \
 from tgbot.middlewares.last_date_activ_day import DbMiddleware
 from tgbot.models.Base_model import Base
 from tgbot.models.engine import create_engine_db, get_session_maker, proceed_schemas
-from tgbot.services.auxiliary_functions import shedule_jobs
+from tgbot.services.auxiliary_functions import shedule_jobs, update_info_group_channel
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +83,6 @@ async def main():
     await shedule_jobs()
     bot['config'] = config
     bot['session_maker'] = session_maker
-
     register_all_middlewares(dp)
     register_all_filters(dp)
     register_all_handlers(dp)

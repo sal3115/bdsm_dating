@@ -4,14 +4,15 @@ import logging
 
 import pandas as pd
 from dateutil.relativedelta import relativedelta
-from sqlalchemy import select, and_, or_, not_, update, func, Table, inspect, create_engine, exc
+from sqlalchemy import select, and_, or_, not_, update, func, Table, inspect, create_engine, exc, join
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased, Session
 
 from tgbot import config
 from tgbot.models.Base_model import Base
 from tgbot.models.Users import Users, LikeDislikeTable, PhotoTable, ComplaintsTable, \
-    RejectingVerification, BlockUserDescription, PaidTable, PriceSubscription, DailyReactionTable
+    RejectingVerification, BlockUserDescription, PaidTable, PriceSubscription, DailyReactionTable, \
+    ResendGroupAndChannel, FeaturesResendGroupAndChannel, ResendFreePlatform
 from tgbot.models.engine import create_engine_db, get_session_maker
 
 logging.basicConfig(
@@ -21,6 +22,7 @@ logging.basicConfig(
 
 
 async def insert_users(session, params, value = None):
+    logging.info(params)
     user_1 = Users(
     user_id= params['user_id'],
     status = 'user',
@@ -142,6 +144,13 @@ async def insert_paid_subscription(session,user_id, number_of_day):
                 ses.add( request )
         except exc.IntegrityError:
             await update_paid_subscription(session=session, user_id=user_id, number_of_days=number_of_day)
+
+
+async def insert_resend_free_platform(session, user_id, id_platform, anonymous):
+    request = ResendFreePlatform( user_id=user_id, id_platform=id_platform, anonymous=anonymous )
+    with session() as ses:
+        with ses.begin():
+            ses.add( request )
 
 
 
@@ -428,6 +437,15 @@ async def select_user(session, user_id):
             answer = ses.execute( request )
             answer2 = [dict( r._mapping ) for r in answer.fetchall()]
             return answer2
+
+async def select_user_with_mini_id(session, user_id):
+    request = select(*[col for col in Users.__table__.c]).where( Users.id == user_id )
+    with session() as ses:
+        with ses.begin():
+            answer = ses.execute( request )
+            answer2 = [dict( r._mapping ) for r in answer.fetchall()]
+            return answer2
+
 async def select_user_moderation(session, id):
     request = select(*[col for col in Users.__table__.c]).where( Users.id == id )
     with session() as ses:
@@ -611,6 +629,104 @@ async def select_price_subscription(session):
             return answer2
 
 
+async def select_placement_group_channel(session):
+    request = select( *[col for col in ResendGroupAndChannel.__table__.c] )
+    with session() as ses:
+        with ses.begin():
+            answer = ses.execute( request )
+            answer2 = [dict( r._mapping ) for r in answer.fetchall()]
+            return answer2
+
+
+
+async def select_placement_group_channel_one(session, id_mini, partner_position=None):
+    if partner_position:
+        request = (
+            select(
+                *[col for col in ResendGroupAndChannel.__table__.c],
+                FeaturesResendGroupAndChannel.thread_message_id
+            )
+            .select_from(
+                join(
+                    ResendGroupAndChannel,
+                    FeaturesResendGroupAndChannel,
+                    ResendGroupAndChannel.id == FeaturesResendGroupAndChannel.id_channel_group
+                )
+            )
+            .where(
+                ResendGroupAndChannel.id == id_mini,
+                not_(
+                    FeaturesResendGroupAndChannel.thread_message_id.in_(
+                        select( FeaturesResendGroupAndChannel.thread_message_id ).where(
+                            FeaturesResendGroupAndChannel.features == partner_position
+                        )
+                    )
+                )
+            )
+        )
+    else:
+        request = select( *[col for col in ResendGroupAndChannel.__table__.c] ).where(
+            ResendGroupAndChannel.id == id_mini
+        )
+    with session() as ses:
+        with ses.begin():
+            answer = ses.execute( request )
+            return [dict( r._mapping ) for r in answer.fetchall()]
+
+
+async def select_resend_platform_one(session, id_mini, partner_position):
+    # Проверка наличия id_mini в таблице FeaturesResendGroupAndChannel
+    id_exists_query = select( FeaturesResendGroupAndChannel.id_channel_group ).where(
+        FeaturesResendGroupAndChannel.id_channel_group == id_mini
+    )
+
+    with session() as ses:
+        with ses.begin():
+            id_exists = ses.execute( id_exists_query ).scalar() is not None
+
+            # Формируем запрос в зависимости от наличия id_mini
+            if id_exists:
+                # Базовый запрос с join
+                request = (
+                    select(
+                        *[col for col in ResendGroupAndChannel.__table__.c],
+                        FeaturesResendGroupAndChannel.thread_message_id
+                    )
+                    .select_from(
+                        join(
+                            ResendGroupAndChannel,
+                            FeaturesResendGroupAndChannel,
+                            ResendGroupAndChannel.id == FeaturesResendGroupAndChannel.id_channel_group
+                        )
+                    )
+                    .where( ResendGroupAndChannel.id == id_mini )
+                )
+                # Добавляем фильтр на features, если передан partner_position
+                if partner_position is not None:
+                    request = request.where(
+                        FeaturesResendGroupAndChannel.features == partner_position
+                    )
+            else:
+                # Запрос без join, если id_mini отсутствует
+                request = select( *[col for col in ResendGroupAndChannel.__table__.c] ).where(
+                    ResendGroupAndChannel.id == id_mini
+                )
+
+            # Выполняем запрос и возвращаем результат
+            answer = ses.execute( request )
+            return [dict( r._mapping ) for r in answer.fetchall()]
+
+
+async def select_resend_free_platform(session, user_id):
+    request = select( *[col for col in ResendFreePlatform.__table__.c] ).where( ResendFreePlatform.user_id == user_id )
+    with session() as ses:
+        with ses.begin():
+            answer = ses.execute( request )
+            answer2 = [dict( r._mapping ) for r in answer.fetchall()]
+            return answer2
+
+
+
 async def update_first_photo(session, user_id, photo_id ,first_photo = True):
     stmt = update( PhotoTable ).where(and_(PhotoTable.id_user == user_id, PhotoTable.photo_id == photo_id)).values(
         is_first_photo=first_photo )
@@ -651,6 +767,19 @@ async def update_complaint_decision(session, complaint_user_id, **kwargs):
         with ses.begin():
             ses.execute( stmt )
 
+async def update_info_channels_group(session, id_channel_group, **kwargs):
+    stmt = update( ResendGroupAndChannel ).where( ResendGroupAndChannel.id_channel_group == id_channel_group ).values( **kwargs )
+    with session() as ses:
+        with ses.begin():
+            ses.execute( stmt )
+
+
+async def update_resend_free_platform(session, user_id, mini_platform_id,**kwargs):
+    stmt = update( ResendFreePlatform ).where( and_(ResendFreePlatform.user_id== user_id,
+                                                    ResendFreePlatform.id_platform==mini_platform_id)).values(**kwargs )
+    with session() as ses:
+        with ses.begin():
+            ses.execute( stmt )
 
 
 import pandas as pd

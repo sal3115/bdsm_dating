@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, date
 from math import ceil
 from typing import Union, List
 
-from aiogram import types
+from aiogram import types, Bot
 from aiogram.bot import bot
 from aiogram.types import InputMedia, InputMediaVideo, InputFile, InputMediaPhoto
 from aiogram.utils.exceptions import MessageCantBeEdited, BadRequest, MessageToEditNotFound, MessageToDeleteNotFound, \
@@ -22,12 +22,12 @@ from tgbot.config import load_config
 from tgbot.models.engine import create_engine_db, get_session_maker
 from tgbot.models.sql_request import select_photo, select_user, select_check_mutual_interest, \
     select_check_daily_interest, insert_like_dis, insert_daily_reaktion, select_check_interest, delete_daily_reaction, \
-    delete_reaction_like_dislike_table
+    delete_reaction_like_dislike_table, select_placement_group_channel, update_info_channels_group
 from tgbot.services.calculate_age import calculateAge
 
 async def check_city(city):
     async with Nominatim(user_agent="bot_tg", adapter_factory=AioHTTPAdapter) as geolocator:
-        location = await geolocator.geocode(language='ru', query ={'city':city, 'county': '', 'country': 'Russia'})
+        location = await geolocator.geocode(language='ru', query ={'city':city, 'county': '', 'country': 'Russia'}, timeout=10)
         try:
             check_city = location.raw
             adress_type = check_city['addresstype'] == 'city'
@@ -883,3 +883,18 @@ def captcha():
          draw.point((i, j), (a, b, c))
    image.save("captcha.png", "PNG") #Сохраняем картинку
    del draw #Удаляем кисть
+
+
+async def update_info_group_channel(session, bot:Bot):
+    group_and_channel_all_info = await select_placement_group_channel(session=session)
+    for group_and_channel in group_and_channel_all_info:
+        id_group_channel = group_and_channel['id_channel_group']
+        admins_all_info = await bot.get_chat_administrators(chat_id=id_group_channel)
+        group_and_channel_info = await bot.get_chat(chat_id=id_group_channel)
+        for admin in admins_all_info:
+            if admin['status'] == 'creator':
+                id_admin = admin.user.id
+                await update_info_channels_group(session=session, id_channel_group=int(id_group_channel), id_admin=id_admin,
+                                                 title_channel_group=group_and_channel_info.title)
+        logging.info(f'id admin {id_admin}')
+#id admin [<ChatMemberOwner {"user": {"id": 1498771618, "is_bot": false, "first_name": "👀 John", "last_name": "Smit", "username": "john_smith1113", "language_code": "ru"}, "status": "creator", "is_anonymous": false, "can_manage_chat": true, "can_post_messages": true, "can_edit_messages": true, "can_delete_messages": true, "can_manage_voice_chats": true, "can_manage_video_chats": true, "can_restrict_members": true, "can_promote_members": true, "can_change_info": true, "can_invite_users": true, "can_pin_messages": true, "can_manage_topics": true}>]
