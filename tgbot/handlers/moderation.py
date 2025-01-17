@@ -245,8 +245,20 @@ async def verify_kb(call: types.CallbackQuery, callback_data:dict, counter=0, st
                                     time_verif=datetime.datetime.now().date(), status='block_user' )
         else:
             await resend_group_free(message=call, id_user=user_id_profile)
-
             await update_user_info(session=session, user_id=user_id_profile, moderation=True, time_verif=datetime.datetime.now().date(), status='user' )
+            if profile_user[0]['time_verif'] is None:
+                try:
+                    text = 'Ваша анкета проверена можете пользоваться сервисом'
+                    await call.message.bot.send_message(chat_id=user_id_profile, text=text)
+                except BotBlocked:
+                    status = profile_user[0]['status']
+                    if status != 'block':
+                        await update_user_info( session=session, user_id=user_id_profile, status='exit_user' )
+                    else:
+                        pass
+                    await call.message.answer( text=f'Пользователю с ид {user_id_profile} заблокировал бота' )
+                except Exception as e:
+                    logging.info(e)
         check_rejecttion = await select_rejection_user(session=session, user_id=user_id_profile)
         if len(check_rejecttion) > 0:
             await delete_rejecting_verification(session=session, user_id=user_id_profile)

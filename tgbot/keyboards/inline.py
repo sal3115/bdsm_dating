@@ -10,6 +10,7 @@ from aiogram.utils.callback_data import CallbackData
 
 from tgbot.models.Users import ResendGroupAndChannel
 from tgbot.models.sql_request import select_user_name, select_placement_group_channel
+from tgbot.services.payment import paid_url
 
 
 async def func_kb_gender(gender=None):
@@ -785,14 +786,20 @@ async def cancel_inline_kb(user_id=0, page=0):
     return markup
 
 
-paid_subs_cd = CallbackData('pscd', 'id_price', 'user_id')
+# paid_subs_cd = CallbackData('pscd', 'id_price', 'user_id')
+# async def paid_subs_kb(data ,user_id):
+#     markup = InlineKeyboardMarkup( row_width=3 )
+#     for dat in data:
+#         await paid_url( user_id=user_id, id_rate=dat['id'],  )
+#         markup.insert(InlineKeyboardButton( text=f'{dat["title"]}', callback_data= paid_subs_cd.new(id_price = dat['id'], user_id=user_id) ) )
+#     return markup
+
 async def paid_subs_kb(data ,user_id):
     markup = InlineKeyboardMarkup( row_width=3 )
     for dat in data:
-        markup.insert(InlineKeyboardButton( text=f'{dat["title"]}', callback_data= paid_subs_cd.new(id_price = dat['id'], user_id=user_id) ) )
+        url_paid = await paid_url( user_id=user_id, id_rate=dat['id'],  amount=dat['price'])
+        markup.insert(InlineKeyboardButton( text=f'{dat["title"]}', url= url_paid) )
     return markup
-
-
 yes_no_cb_new = CallbackData('yncn', 'callback')
 async def yes_no_kb():
     markup = InlineKeyboardMarkup( row_width=2 )

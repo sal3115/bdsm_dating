@@ -12,7 +12,7 @@ from tgbot.handlers.main_menu import scrolling_photo_func
 from tgbot.keyboards.inline import my_profile_new_cd, edit_profile_cd, edit_profile_kb, my_photos_cd, cancel_cd, \
     cancel_inline_kb, edit_my_photos_kb, yes_no_kb, yes_no_cb_new, interaction_format_button, interaction_format_cb, \
     my_profile_kb_new, edit_video_card_kb, view_my_profile_keyboard, paid_subs_kb, my_video_card_cd, view_my_profile_cd, \
-    scrolling_photos_main_cd, paid_subs_cd
+    scrolling_photos_main_cd
 from tgbot.keyboards.reply import cancel_kb, main_menu_kb
 from tgbot.misc.states import EditOther
 from tgbot.models.sql_request import select_user, update_user_info, select_rejection_user, update_first_photo, \
@@ -171,7 +171,6 @@ async def paid_subscription(call: types.CallbackQuery):
     kb = await paid_subs_kb(data = data,user_id=user_id)
     await edit_message(message=call, text=text, markup=kb)
 
-
 async def paid_subs_processor(call: types.CallbackQuery, callback_data:dict):
     await call.bot.delete_message(call.from_user.id, call.message.message_id)
     session = call.bot.data['session_maker']
@@ -189,51 +188,73 @@ async def paid_subs_processor(call: types.CallbackQuery, callback_data:dict):
             number_of_day = p['number_of_days']
         else:
             pass
-    faker = Faker()
-    email_domain = ['@ya.ru', '@yandex.ru', '@gmail.com', '@rambler.ru', '@yahoo.com']
-    choice_email = random.choice( email_domain )
-    faker_email = faker.safe_email().split( '@' )
-    new_email = faker_email[0] + choice_email
-    logging.info(f'----------price-{price}, title - {title}')
-    invoice_bot = await call.bot.send_invoice(chat_id=call.message.chat.id, title = 'Оформление подписки', description= title,
-                                payload=f'{number_of_day}', provider_token=yootoken,currency='RUB',
-                                start_parameter= 'subscription', prices=[{'label': 'руб', 'amount': int(price)*100}],
-                                              provider_data ={"receipt" : {
-                                                  "customer": {
-                                                      "email": new_email
-                                                  },
-                                                  "items": [
-                                                      {
-                                                          "description": f"Подписка {title}",
-                                                          "quantity": 1,
-                                                          "amount": {
-                                                              "value": int(price),
-                                                              "currency": "RUB"
-                                                          },
-                                                          "vat_code": 1,
-                                                      }
-                                                  ],
-                                              }})
-    logging.info(invoice_bot)
 
-async def procces_pre_paid_subs(pre_check_query: types.PreCheckoutQuery):
-    user_id = pre_check_query.from_user.id
-    logging.info(pre_check_query)
-    session = pre_check_query.bot['session_maker']
-    number_of_day = pre_check_query.invoice_payload
-    check_pre_check_out = await pre_check_query.bot.answer_pre_checkout_query( pre_check_query.id, ok=True )
-    logging.info(pre_check_query)
-    logging.info(check_pre_check_out)
-    if check_pre_check_out:
-        try:
-            await insert_paid_subscription(session=session, user_id=user_id, number_of_day=number_of_day)
-        except NumberOfDays:
-            await pre_check_query.bot.send_message(chat_id=user_id, text='Что-то пошло не так, обратитесь к администрации')
-            return
 
-async def pay_paid_subs(message:types.Message):
-    logging.info(f'----------------------{message.successful_payment}')
-    await message.answer( 'Вы подписаны на бота' )
+
+
+
+# async def paid_subs_processor(call: types.CallbackQuery, callback_data:dict):
+#     await call.bot.delete_message(call.from_user.id, call.message.message_id)
+#     session = call.bot.data['session_maker']
+#     price_all_info = await select_price_subscription(session=session)
+#     price_id = callback_data['id_price']
+#     price = ''
+#     title = ''
+#     number_of_day = ''
+#     yootoken = call.bot['config'].yootoken.yootoken
+#
+#     for p in price_all_info:
+#         if int(p['id']) == int(price_id):
+#             title = p['title']
+#             price = p['price']
+#             number_of_day = p['number_of_days']
+#         else:
+#             pass
+#     faker = Faker()
+#     email_domain = ['@ya.ru', '@yandex.ru', '@gmail.com', '@rambler.ru', '@yahoo.com']
+#     choice_email = random.choice( email_domain )
+#     faker_email = faker.safe_email().split( '@' )
+#     new_email = faker_email[0] + choice_email
+#     logging.info(f'----------price-{price}, title - {title}')
+#     invoice_bot = await call.bot.send_invoice(chat_id=call.message.chat.id, title = 'Оформление подписки', description= title,
+#                                 payload=f'{number_of_day}', provider_token=yootoken,currency='RUB',
+#                                 start_parameter= 'subscription', prices=[{'label': 'руб', 'amount': int(price)*100}],
+#                                               provider_data ={"receipt" : {
+#                                                   "customer": {
+#                                                       "email": new_email
+#                                                   },
+#                                                   "items": [
+#                                                       {
+#                                                           "description": f"Подписка {title}",
+#                                                           "quantity": 1,
+#                                                           "amount": {
+#                                                               "value": int(price),
+#                                                               "currency": "RUB"
+#                                                           },
+#                                                           "vat_code": 1,
+#                                                       }
+#                                                   ],
+#                                               }})
+#     logging.info(invoice_bot)
+#
+# async def procces_pre_paid_subs(pre_check_query: types.PreCheckoutQuery):
+#     user_id = pre_check_query.from_user.id
+#     logging.info(pre_check_query)
+#     session = pre_check_query.bot['session_maker']
+#     number_of_day = pre_check_query.invoice_payload
+#     check_pre_check_out = await pre_check_query.bot.answer_pre_checkout_query( pre_check_query.id, ok=True )
+#     logging.info(pre_check_query)
+#     logging.info(check_pre_check_out)
+#     if check_pre_check_out:
+#         try:
+#             await insert_paid_subscription(session=session, user_id=user_id, number_of_day=number_of_day)
+#         except NumberOfDays:
+#             await pre_check_query.bot.send_message(chat_id=user_id, text='Что-то пошло не так, обратитесь к администрации')
+#             return
+#
+# async def pay_paid_subs(message:types.Message):
+#     logging.info(f'----------------------{message.successful_payment}')
+#     await message.answer( 'Вы подписаны на бота' )
 
 #My profile callback
 async def my_profile_callback(call:types.CallbackQuery, callback_data:dict):
@@ -839,9 +860,9 @@ def register_edit_profile(dp:Dispatcher):
     dp.register_callback_query_handler( view_my_profile_callback, view_my_profile_cd.filter() )
     dp.register_callback_query_handler( scroll_photo_main_profile, scrolling_photos_main_cd.filter() )
     # paid
-    dp.register_callback_query_handler( paid_subs_processor, paid_subs_cd.filter() )
-    dp.register_pre_checkout_query_handler( procces_pre_paid_subs )
-    dp.register_message_handler( pay_paid_subs, content_types=ContentType.SUCCESSFUL_PAYMENT )
+    # dp.register_callback_query_handler( paid_subs_processor, paid_subs_cd.filter() )
+    # dp.register_pre_checkout_query_handler( procces_pre_paid_subs )
+    # dp.register_message_handler( pay_paid_subs, content_types=ContentType.SUCCESSFUL_PAYMENT )
 #здесь закончился main_profile
 
     dp.register_callback_query_handler( edit_profile_kb_process, edit_profile_cd.filter())

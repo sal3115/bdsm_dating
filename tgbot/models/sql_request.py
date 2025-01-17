@@ -627,7 +627,13 @@ async def select_price_subscription(session):
             answer = ses.execute( request)
             answer2 = [dict( r._mapping ) for r in answer.fetchall()]
             return answer2
-
+async def select_price_subscription_from_id(session, id_rate):
+    request = select(*[col for col in PriceSubscription.__table__.c]).where(PriceSubscription.id == id_rate)
+    with session() as ses:
+        with ses.begin():
+            answer = ses.execute( request)
+            answer2 = [dict( r._mapping ) for r in answer.fetchall()]
+            return answer2
 
 async def select_placement_group_channel(session):
     request = select( *[col for col in ResendGroupAndChannel.__table__.c] )

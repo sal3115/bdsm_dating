@@ -28,13 +28,20 @@ class Miscellaneous:
 class Yookassa:
     yootoken: str
 
+
+@dataclass
+class Yoomoney:
+    access_token:str
+    secret_word_yoomoney:str
+
+
 @dataclass
 class Config:
     tg_bot: TgBot
     db: DbConfig
     misc: Miscellaneous
     yootoken: Yookassa
-
+    yoomoney : Yoomoney
 
 
 
@@ -56,7 +63,11 @@ def load_config(path: str = None):
 
         ),
         yootoken = Yookassa(
-            yootoken = env.str('YOOTOKEN')
+            yootoken = env.str('YOOTOKEN'),
+        ),
+        yoomoney=Yoomoney(
+            access_token = env.str('ACCESS_TOKEN_YOOMONEY'),
+            secret_word_yoomoney=env.str( 'SECRET_WORD_YOOMONEY' )
         ),
         misc=Miscellaneous(
             id_group=env.int('ID_GROUP'),
