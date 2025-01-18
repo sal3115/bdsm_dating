@@ -34,9 +34,25 @@ async def check_city(city):
             name_city = check_city['name']
             return adress_type, name_city
         except AttributeError:
-            return False
+            return False, None
         except TypeError:
-            return False
+            return False, None
+
+
+async def check_country(country):
+    async with Nominatim(user_agent="bot_tg", adapter_factory=AioHTTPAdapter) as geolocator:
+        location = await geolocator.geocode(language='ru', query ={'city': '','county': '', 'country': country}, timeout=10)
+        try:
+            check_city = location.raw
+            adress_type = check_city['addresstype'] == 'country'
+            name_country = check_city['name']
+            return adress_type, name_country
+        except AttributeError:
+            return False, None
+        except TypeError:
+            return False, None
+
+
 async def date_formats(dates):
     command_parse = re.compile(r'^(0?[1-9]|[12][0-9]|3[01])[- |/.,](0?[1-9]|1[012])[- |/.,](19|20)\d\d$')
     command_parse_2 = re.compile(r'^(0?[1-9]|[12][0-9]|3[01])[- |/.,](0?[1-9]|1[012])[- |/.,](19|20|21|22|23|24|25)$')
@@ -887,14 +903,17 @@ def captcha():
 
 async def update_info_group_channel(session, bot:Bot):
     group_and_channel_all_info = await select_placement_group_channel(session=session)
+    if len(group_and_channel_all_info) <= 0:
+        return
     for group_and_channel in group_and_channel_all_info:
         id_group_channel = group_and_channel['id_channel_group']
         admins_all_info = await bot.get_chat_administrators(chat_id=id_group_channel)
         group_and_channel_info = await bot.get_chat(chat_id=id_group_channel)
+        url = group_and_channel_info.invite_link
         for admin in admins_all_info:
             if admin['status'] == 'creator':
                 id_admin = admin.user.id
                 await update_info_channels_group(session=session, id_channel_group=int(id_group_channel), id_admin=id_admin,
-                                                 title_channel_group=group_and_channel_info.title)
-        logging.info(f'id admin {id_admin}')
+                                                 title_channel_group=group_and_channel_info.title, url = url)
+                logging.info(f'id admin {id_admin}')
 #id admin [<ChatMemberOwner {"user": {"id": 1498771618, "is_bot": false, "first_name": "👀 John", "last_name": "Smit", "username": "john_smith1113", "language_code": "ru"}, "status": "creator", "is_anonymous": false, "can_manage_chat": true, "can_post_messages": true, "can_edit_messages": true, "can_delete_messages": true, "can_manage_voice_chats": true, "can_manage_video_chats": true, "can_restrict_members": true, "can_promote_members": true, "can_change_info": true, "can_invite_users": true, "can_pin_messages": true, "can_manage_topics": true}>]

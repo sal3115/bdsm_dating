@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import logging
 from typing import Union, List
@@ -158,21 +159,51 @@ async def birth_city(message: Message, state: FSMContext):
         return
     data = await state.get_data()
     logging.info( msg=[data, await state.get_state()])
+
+
+# ловим ответ про дату рождения запрос страны
+# async def birth_country(message: Message, state: FSMContext):
+#     text = text_dict['страна']
+#     kb = await func_kb_back_2()
+#     check_date = await date_formats( message.text )
+#     if message.text == '🔙Вернуться НАЗАД':
+#         await message.answer( text=text, reply_markup=kb )
+#         await FSM_hello.your_country.set()
+#     elif check_date:
+#         age = await calculateAge( check_date )
+#         if age >= 18:
+#             await state.update_data( birthday=check_date )
+#             await message.answer( text=text, reply_markup=kb )
+#             await FSM_hello.your_country.set()
+#         else:
+#             text = '❗️❗️❗️❗️Заполнение анкеты прервано, вам нет 18 лет, просьба покинуть ресурс❗️❗️❗️❗️'
+#             await message.answer( text=text, reply_markup=None )
+#             await state.finish()
+#             return
+#     else:  # запрос даты рождения
+#         text = text_dict['qw_7']
+#         kb = await func_kb_back_2()
+#         await message.answer( text=text, reply_markup=kb )
+#         return
+#     data = await state.get_data()
+#     logging.info( msg=[data, await state.get_state()] )
+
+
 #ловим город спрашиваем позиция в теме
 async def city_city_confirm(message: Message, state: FSMContext):
     city = message.text
     check_rus_city = await checking_russian_letters( city )
     if check_rus_city:
-        city = await check_city( city )
+        adress_type, city = await check_city( city )
     else:
         text = text_dict['qw_9_1']  # спрашиваем город русскими буквами
         kb = await func_kb_back_2()
         await message.answer( text=text, reply_markup=kb )
         await FSM_hello.your_city.set()
         return
-    if city:
-        await state.update_data( city=city[1] )
-        text = text_dict['qw_9_3'].format(city[1])
+    if adress_type:
+        await state.update_data( city=city )
+        text = text_dict['qw_9_3'].format(city)
         kb = await yes_no_kb_confirm_city()
         await message.answer( text=text, reply_markup=kb )
         await FSM_hello.your_city_confirm.set()
@@ -377,7 +408,7 @@ async def another_city_interaction_format(message: Union[types.Message, types.Ca
     kb = await interaction_format_button()
     if isinstance(message, types.Message):
         if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
-            await message.answer( text=text)
+            await message.answer( text=text, reply_markup=kb)
             await FSM_hello.interaction_format.set()
             data = await state.get_data()
             logging.info( msg=[data, await state.get_state()])
@@ -456,7 +487,7 @@ async def interaction_format_resend(message: Union[types.Message, types.Callback
     if isinstance(message, types.Message):
         if message.text == '🔙Вернуться НАЗАД' or message.text == 'Пропустить🔜':
             await message.answer( text=text)
-            await FSM_hello.finish.set()
+            await FSM_hello.resend_group.set()
             data = await state.get_data()
             logging.info( msg=[data, await state.get_state()])
         else:
@@ -467,13 +498,13 @@ async def interaction_format_resend(message: Union[types.Message, types.Callback
         callback = message
         message = message.message
         answer = callback_data['callback']
-        if answer != 'no' or answer != 'yes':
+        if answer != 'no' and answer != 'yes':
             await state.update_data(interaction_format=answer)
         session = message.bot.data['session_maker']
+        bot = message.bot
+        await update_info_group_channel( session=session, bot=bot )
         check_groups = await select_placement_group_channel(session=session)
         if len(check_groups) > 0:
-            bot = message.bot
-            await update_info_group_channel( session=session, bot=bot )
             if 'selected' not in data:
                 selected = set(str(group['id']) for group in check_groups)
                 await state.update_data( selected=selected)
@@ -487,9 +518,11 @@ async def interaction_format_resend(message: Union[types.Message, types.Callback
                 anonymous = data['anonymous']
             for select1 in selected:
                 logging.info(f'interaction_format_resend {type(select1)}')
-            kb = await resend_group_keyboard(check_groups, selected=selected, anonymous=anonymous)
             for num, group in enumerate(check_groups, start=1):
-                text += f'{num}. <a href="{group["url"]}">{group["title_channel_group"]}</a>\n'
+                group_url = group["url"]
+                group_title = group["title_channel_group"]
+                text += f'{num}. <a href="{group_url}">{group_title}</a>\n'
+            kb = await resend_group_keyboard(check_groups, selected=selected, anonymous=anonymous)
             await message.answer( text=text, reply_markup=kb )
             await FSM_hello.resend_group.set()
         else:
@@ -632,8 +665,8 @@ async def back_button(message: Message, state: FSMContext):
         "FSM_hello:min_age": about_me_photo,
         "FSM_hello:max_age": photo_min_age,
         "FSM_hello:another_city": min_age_max_age,
-        "FSM_hello:online_practice": max_age_another_city,
-        "FSM_hello:finish": another_city_interaction_format,
+        "FSM_hello:interaction_format" : max_age_another_city,
+        "FSM_hello:resend_group": another_city_interaction_format,
     }
     # Забираем нужную функцию для выбранного уровня
     current_level_function = levels[curent_state]

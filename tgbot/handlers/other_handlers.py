@@ -1,5 +1,5 @@
 from aiogram import types, Dispatcher
-from aiogram.types import ContentType
+from aiogram.types import ContentType, ChatType
 
 from tgbot.keyboards.reply import main_menu_kb
 from tgbot.models.sql_request import select_user
@@ -7,9 +7,13 @@ from tgbot.services.auxiliary_functions import edit_message
 
 
 async def raw_message(message: types.Message):
+    if message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
+        return  # Игнорируем сообщение
     await message.delete()
 
 async def first_page_other(message:types.Message):
+    if message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
+        return  # Игнорируем сообщение
     session = message.bot.data['session_maker']
     user_id = message.from_user.id
     info_user = await select_user(session=session, user_id=user_id)

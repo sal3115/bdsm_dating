@@ -177,6 +177,22 @@ def register_all_handlers(dp):
     outher_handler(dp)
 
 
+async def set_commands(bot:Bot):
+    # Устанавливаем команды для личных чатов
+    await bot.set_my_commands(
+        commands=[
+            types.BotCommand( "start", "Запустить бота"),
+            types.BotCommand( "restart", "Перезапустить бота" ),
+        ],
+        scope=types.BotCommandScopeAllPrivateChats()
+    )
+
+    # Устанавливаем пустой список команд для групп
+    await bot.set_my_commands(
+        commands=[],
+        scope= types.BotCommandScopeAllGroupChats()
+    )
+
 async def main():
     logging.basicConfig(
         level=logging.INFO,
@@ -199,12 +215,12 @@ async def main():
     register_all_middlewares(dp)
     register_all_filters(dp)
     register_all_handlers(dp)
-    await dp.bot.set_my_commands( [
-        types.BotCommand( "start", "Запустить бота" ),
-        types.BotCommand( "restart", "Перезапустить бота" ),
-
-    ] )
-
+    # await dp.bot.set_my_commands( [
+    #     types.BotCommand( "start", "Запустить бота" ),
+    #     types.BotCommand( "restart", "Перезапустить бота" ),
+    #
+    # ] )
+    await set_commands(bot=bot)
     # start
     webhook_app = create_app( bot )
 

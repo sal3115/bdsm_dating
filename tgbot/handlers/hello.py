@@ -2,7 +2,7 @@ import logging
 
 from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
-from aiogram.types import ContentType, InputFile
+from aiogram.types import ContentType, InputFile, ChatType
 
 from tgbot.filters.check_user import CheckUserRole
 from tgbot.keyboards.inline import func_kb_look_pravila, func_kb_acsept_pravila, func_kb_acsept_personal_data, \
@@ -15,6 +15,8 @@ from tgbot.services.photo_and_text import  text_dict
 
 # начало общения
 async def get_start(message: types.Message, state: FSMContext):
+    if message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
+        return  # Игнорируем сообщение
     kb = await func_kb_look_pravila()
     logging.info('get_start')
     text = 'Добро пожаловать в бот знакомств по интересам.\n' \

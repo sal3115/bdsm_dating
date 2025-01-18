@@ -3,7 +3,7 @@ from typing import Union
 
 from aiogram import types, Dispatcher
 from aiogram.dispatcher import FSMContext
-from aiogram.types import InputFile
+from aiogram.types import InputFile, ChatType
 from aiogram.utils import exceptions
 
 from tgbot.keyboards.inline import dating_keyboard, dating_keyboard_cb,  scrolling_photos, \
@@ -20,6 +20,8 @@ from tgbot.services.photo_and_text import text_dict, text_main_menu
 
 
 async def first_page(message:Union[ types.Message, types.CallbackQuery]):
+    if message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
+        return  # Игнорируем сообщение
     if isinstance(message, types.CallbackQuery):
         message = message.message
     text = text_dict['qw_23']
