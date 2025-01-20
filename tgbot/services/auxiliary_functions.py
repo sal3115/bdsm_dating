@@ -25,9 +25,9 @@ from tgbot.models.sql_request import select_photo, select_user, select_check_mut
     delete_reaction_like_dislike_table, select_placement_group_channel, update_info_channels_group
 from tgbot.services.calculate_age import calculateAge
 
-async def check_city(city):
+async def check_city(city, country):
     async with Nominatim(user_agent="bot_tg", adapter_factory=AioHTTPAdapter) as geolocator:
-        location = await geolocator.geocode(language='ru', query ={'city':city, 'county': '', 'country': 'Russia'}, timeout=10)
+        location = await geolocator.geocode(language='ru', query ={'city':city, 'county': '', 'country': country}, timeout=10)
         try:
             check_city = location.raw
             adress_type = check_city['addresstype'] == 'city'

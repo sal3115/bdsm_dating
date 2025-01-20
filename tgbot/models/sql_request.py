@@ -31,6 +31,7 @@ async def insert_users(session, params, value = None):
     gender = params['gender'],
     birthday =params['birthday'],
     city = params['city'],
+    country = params['country'],
     about_my_self = params['about_me'],
     your_position = params['your_position'],
     partner_position = params['partner_position'],

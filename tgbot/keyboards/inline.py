@@ -822,13 +822,23 @@ async def interaction_format_button():
                                          callback_data=interaction_format_cb.new( callback='all' ) ) )
     return markup
 
-yes_no_cb_confirm_city = CallbackData('ynccc', 'callback')
-async def yes_no_kb_confirm_city():
+# yes_no_cb_confirm_city = CallbackData('ynccc', 'callback')
+# async def yes_no_kb_confirm_city():
+#     markup = InlineKeyboardMarkup( row_width=2 )
+#     markup.insert( InlineKeyboardButton( text='Да',
+#                                          callback_data=yes_no_cb_confirm_city.new( callback='yes' ) ) )
+#     markup.insert( InlineKeyboardButton( text='Нет',
+#                                          callback_data=yes_no_cb_confirm_city.new( callback='no' ) ) )
+#     return markup
+
+
+yes_no_cb_confirm_place_residence = CallbackData('ynccpr', 'type_place', 'callback')
+async def yes_no_kb_place_residence(type_place):
     markup = InlineKeyboardMarkup( row_width=2 )
     markup.insert( InlineKeyboardButton( text='Да',
-                                         callback_data=yes_no_cb_confirm_city.new( callback='yes' ) ) )
+                                         callback_data=yes_no_cb_confirm_place_residence.new(type_place = type_place, callback='yes' ) ) )
     markup.insert( InlineKeyboardButton( text='Нет',
-                                         callback_data=yes_no_cb_confirm_city.new( callback='no' ) ) )
+                                         callback_data=yes_no_cb_confirm_place_residence.new(type_place = type_place, callback='no' ) ) )
     return markup
 
 test_keyboard_cd = CallbackData('tkcd', 'callback')

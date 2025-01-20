@@ -15,6 +15,7 @@ class Users(Base):
     gender = Column(String)
     birthday = Column(Date)
     city = Column( String )
+    country = Column( String )
     about_my_self = Column(String)
     your_position = Column(String)
     partner_position = Column(String)
