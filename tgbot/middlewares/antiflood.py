@@ -5,6 +5,7 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher import DEFAULT_RATE_LIMIT
 from aiogram.dispatcher.handler import CancelHandler, current_handler
 from aiogram.dispatcher.middlewares import BaseMiddleware
+from aiogram.types import ChatType
 from aiogram.utils.exceptions import Throttled
 
 
@@ -39,10 +40,11 @@ class ThrottlingMiddleware(BaseMiddleware):
     async def on_process_message(self, message: types.Message, data: dict):
         """
         This handler is called when dispatcher receives a message
-
         :param message:
         """
         # Get current handler
+        if message.chat.type != ChatType.PRIVATE:
+            return
         handler = current_handler.get()
 
         # Get dispatcher from context
@@ -54,7 +56,6 @@ class ThrottlingMiddleware(BaseMiddleware):
         else:
             limit = self.rate_limit
             key = f"{self.prefix}_message"
-
         # Use Dispatcher.throttle method.
         try:
             await dispatcher.throttle(key, rate=limit)
@@ -81,7 +82,6 @@ class ThrottlingMiddleware(BaseMiddleware):
 
         # Calculate how many time is left till the block ends
         delta = throttled.rate - throttled.delta
-        logging.info(message)
         # Prevent flooding
         if throttled.exceeded_count <= 2:
             await message.reply('Too many requests! ')
