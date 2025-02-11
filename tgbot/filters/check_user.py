@@ -24,7 +24,7 @@ class CheckUserRole(BoundFilter):
                 return user_id == check_user_id[0]['user_id']
             elif check_user_id[0]['status'] == 'hidden_user':
                 return user_id == check_user_id[0]['user_id']
-            elif check_user_id[0]['status'] == 'ver_user':
+            elif check_user_id[0]['status'] == 'no_ver_user':
                 return user_id == check_user_id[0]['user_id']
         else:
             return False == self.is_user
