@@ -7,12 +7,12 @@ from tgbot.services.auxiliary_functions import edit_message
 
 
 async def raw_message(message: types.Message):
-    if message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
+    if message.chat.type != ChatType.PRIVATE:
         return  # Игнорируем сообщение
     await message.delete()
 
 async def first_page_other(message:types.Message):
-    if message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
+    if message.chat.type != ChatType.PRIVATE:
         return  # Игнорируем сообщение
     session = message.bot.data['session_maker']
     user_id = message.from_user.id
